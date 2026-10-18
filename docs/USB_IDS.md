@@ -8,7 +8,7 @@ confirms it with the `:32#` identify command.
 
 | PID    | Product                | Status |
 |--------|------------------------|--------|
-| 0x2180 | OpenWheel Filter Wheel | **to submit first** (draft: `docs/pidcodes/submit/`) |
+| 0x2180 | OpenWheel Filter Wheel | **pull request open**: <https://github.com/pidcodes/pidcodes.github.com/pull/1323> (files in `docs/pidcodes/submit/`) |
 | 0x2181 | UpBox                  | reserved, submit when its repo is public (`docs/pidcodes/later/`) |
 | 0x2182 | AstroUniBoard          | reserved, submit when its repo is public (`docs/pidcodes/later/`) |
 | 0x2183 | spare                  | not to be submitted yet |
@@ -26,8 +26,7 @@ ship it, and do not run two different 0x0001 devices on one PC with the ASCOM dr
 
 - [x] Open-source licence for software: GPL-3.0 (`LICENSE`)
 - [x] Open-hardware licence for hardware files: CERN-OHL-S-2.0 (`LICENSE-HARDWARE`)
-- [ ] **Public** source repository <https://github.com/xlazam01/OpenWheel> (created, but still
-      EMPTY as of 2026-10-18: push this project to it before opening the pid.codes PR)
+- [x] **Public** source repository <https://github.com/xlazam01/OpenWheel>
 - [x] Hardware design files are in the project (`hw/` KiCad, `cad/` Solid Edge + STEP), covered by CERN-OHL-S-2.0
 - [x] Org page: `org/MartinsOpenAstroTools/index.md` (no spaces in the directory name)
 - [x] One PID page per product at `1209/<PID>/index.md` with `layout, title, owner, license, site,
