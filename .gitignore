@@ -28,3 +28,4 @@ hw/*.log
 hw/fp-info-cache
 hw/bck/
 hw/.history/
+hw/production/
