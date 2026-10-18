@@ -35,3 +35,6 @@ bin/
 obj/
 *.user
 .vs/
+
+# staged driver build (registered with COM during development)
+driver/ASCOM/dist/
