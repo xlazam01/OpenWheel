@@ -61,6 +61,26 @@ namespace OpenWheel.Core.Tests
         }
 
         [Fact]
+        public void FilterNameRules()
+        {
+            Assert.True(FilterConfigRules.IsValidName(""));
+            Assert.True(FilterConfigRules.IsValidName("H-alpha 7nm"));
+            Assert.True(FilterConfigRules.IsValidName("123456789012345"));
+            Assert.False(FilterConfigRules.IsValidName("1234567890123456"));    // 16 chars
+            Assert.False(FilterConfigRules.IsValidName("a,b"));
+            Assert.False(FilterConfigRules.IsValidName("a|b"));
+            Assert.False(FilterConfigRules.IsValidName("a:b"));
+            Assert.False(FilterConfigRules.IsValidName("a#b"));
+            Assert.False(FilterConfigRules.IsValidName("café"));
+            Assert.Equal("a-b-c", FilterConfigRules.Sanitize(" a,b|c "));
+            Assert.Equal("123456789012345", FilterConfigRules.Sanitize("1234567890123456789"));
+            Assert.Equal(new[] { "L", "", "G", "" }, FilterConfigRules.ParseNames("L,,G", 4));
+            Assert.Equal(new[] { 0, -35, 120 }, FilterConfigRules.ParseOffsets("0,-35,120", 3));
+            Assert.Null(FilterConfigRules.ParseOffsets("0,x", 2));
+            Assert.Null(FilterConfigRules.ParseOffsets("0,99999", 2));
+        }
+
+        [Fact]
         public void VidPidKeyParsing()
         {
             int vid, pid;
@@ -282,6 +302,70 @@ namespace OpenWheel.Core.Tests
             Assert.Contains("hall", c.Snapshot.Problem);
             Assert.True(c.ClearError().Success);
             Assert.True(WaitFor(() => c.Snapshot.DeviceError == 0 && c.Snapshot.Problem == null, 1000));
+        }
+
+        // ------------------------------------------------------------ filter names stored in the wheel
+
+        [Fact]
+        public void NamesAndOffsetsAreReadFromTheWheelOnConnect()
+        {
+            var w = new FakeWheel { FilterNames = new[] { "L", "Red", "", "Blue" }, FocusOffsets = new[] { 0, -35, 120, 4 } };
+            WheelController c = Connected(this, w);
+            WheelSnapshot s = c.Snapshot;
+            Assert.True(s.FilterConfigSupported);
+            Assert.Equal(new[] { "L", "Red", "", "Blue" }, s.FilterNames);
+            Assert.Equal(new[] { 0, -35, 120, 4 }, s.FocusOffsets);
+        }
+
+        [Fact]
+        public void SavingSendsOnlyWhatChangedAndReadsBack()
+        {
+            var w = new FakeWheel { FilterNames = new[] { "L", "Red", "G", "B" }, FocusOffsets = new[] { 0, 0, 0, 0 } };
+            WheelController c = Connected(this, w);
+            w.Received.Clear();
+            CommandResult r = c.SaveFilterConfig(new[] { "L", "Red", "Green", "B" }, new[] { 0, 0, 25, 0 });
+            Assert.True(r.Success, r.Message);
+            Assert.Equal(1, w.Received.FindAll(x => x.StartsWith("37 ")).Count);   // only slot 2's name
+            Assert.Equal(1, w.Received.FindAll(x => x.StartsWith("39 ")).Count);   // only slot 2's offset
+            Assert.Equal("Green", w.FilterNames[2]);
+            Assert.Equal(25, w.FocusOffsets[2]);
+            Assert.Equal("Green", c.Snapshot.FilterNames[2]);
+            Assert.Equal(25, c.Snapshot.FocusOffsets[2]);
+        }
+
+        [Fact]
+        public void InvalidNamesAreRejectedBeforeAnythingIsSent()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            w.Received.Clear();
+            CommandResult r = c.SaveFilterConfig(new[] { "ok", "bad,name", "", "" }, new[] { 0, 0, 0, 0 });
+            Assert.False(r.Success);
+            Assert.DoesNotContain(w.Received, x => x.StartsWith("37 "));
+        }
+
+        [Fact]
+        public void SavingIsRefusedWhileTheWheelMoves()
+        {
+            var w = new FakeWheel { MoveMs = 800 };
+            WheelController c = Connected(this, w);
+            Assert.True(c.MoveToSlot(2).Success);
+            CommandResult r = c.SaveFilterConfig(new[] { "a", "b", "c", "d" }, new[] { 0, 0, 0, 0 });
+            Assert.False(r.Success);
+            Assert.Contains("moving", r.Message);
+        }
+
+        [Fact]
+        public void FirmwareWithoutNameStorageStillConnectsAndSaysSo()
+        {
+            var w = new FakeWheel { NoFilterConfig = true };
+            WheelController c = Connected(this, w);
+            Assert.True(c.Snapshot.IsConnected);
+            Assert.False(c.Snapshot.FilterConfigSupported);
+            Assert.Null(c.Snapshot.FilterNames);
+            CommandResult r = c.SaveFilterConfig(new[] { "a", "b", "c", "d" }, new[] { 0, 0, 0, 0 });
+            Assert.False(r.Success);
+            Assert.Contains("firmware", r.Message);
         }
 
         [Fact]

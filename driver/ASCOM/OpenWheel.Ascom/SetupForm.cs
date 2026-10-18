@@ -15,6 +15,7 @@ namespace OpenWheel.Ascom
         private readonly ComboBox cmbDevice = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
         private readonly TextBox txtManual = new TextBox();
         private readonly Label lblConnection = new Label { AutoSize = false };
+        private readonly Label lblStorage = new Label { AutoSize = false };
         private readonly DataGridView grid = new DataGridView();
         private readonly TextBox txtStatus = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, Font = new Font(FontFamily.GenericMonospace, 9f) };
         private readonly Button btnHome = new Button { Text = "Home" };
@@ -57,7 +58,11 @@ namespace OpenWheel.Ascom
             Controls.Add(lblConnection);
             y += 40;
 
-            Controls.Add(new Label { Text = "Filters (names and focus offsets are used by the imaging software):", Left = 12, Top = y, Width = 596 });
+            Controls.Add(new Label { Text = "Filters (names and focus offsets are offered to the imaging software):", Left = 12, Top = y, Width = 596 });
+            y += 20;
+            lblStorage.SetBounds(12, y, 596, 18);
+            lblStorage.ForeColor = Color.DimGray;
+            Controls.Add(lblStorage);
             y += 22;
             grid.SetBounds(12, y, 596, 190);
             grid.AllowUserToAddRows = false;
@@ -172,21 +177,28 @@ namespace OpenWheel.Ascom
             cmbMove.Enabled = ready && !st.Busy;
 
             int slots = ready ? st.Slots : 0;
-            if (slots != shownSlots && slots > 0) FillGrid(slots);
-            grid.ReadOnly = slots <= 0;
+            bool onWheel = s.FilterConfigSupported;
+            lblStorage.Text = !ready ? "" : onWheel ? "Stored in the wheel (its EEPROM): they stay with the wheel on any PC."
+                                                    : "This firmware cannot store them: kept on this PC. Update the firmware to store them in the wheel.";
+            // with name storage in the wheel wait until they have been read
+            bool dataReady = slots > 0 && (!onWheel || s.FilterNames != null);
+            if (dataReady && slots != shownSlots) FillGrid(slots, s);
+            grid.ReadOnly = !dataReady;
         }
 
-        private void FillGrid(int slots)
+        private void FillGrid(int slots, WheelSnapshot s)
         {
             shownSlots = slots;
-            string[] names = Settings.GetNames(slots);
-            int[] offsets = Settings.GetFocusOffsets(slots);
+            bool onWheel = s.FilterConfigSupported && s.FilterNames != null && s.FocusOffsets != null;
+            string[] names = onWheel ? s.FilterNames : Settings.GetNames(slots);
+            int[] offsets = onWheel ? s.FocusOffsets : Settings.GetFocusOffsets(slots);
             grid.Rows.Clear();
             cmbMove.Items.Clear();
             for (int i = 0; i < slots; i++)
             {
+                string shown = string.IsNullOrEmpty(names[i]) ? Settings.DefaultName(i) : names[i];
                 grid.Rows.Add((i + 1).ToString(CultureInfo.InvariantCulture), names[i], offsets[i].ToString(CultureInfo.InvariantCulture));
-                cmbMove.Items.Add((i + 1) + ": " + names[i]);
+                cmbMove.Items.Add((i + 1) + ": " + shown);
             }
             if (cmbMove.Items.Count > 0) cmbMove.SelectedIndex = 0;
         }
@@ -213,18 +225,41 @@ namespace OpenWheel.Ascom
             Settings.ManualPort = txtManual.Text.Trim();
 
             // names and offsets
-            if (shownSlots > 0)
+            if (shownSlots > 0 && !grid.ReadOnly)
             {
+                grid.EndEdit();
                 var names = new List<string>();
                 var offsets = new List<int>();
                 foreach (DataGridViewRow row in grid.Rows)
                 {
-                    names.Add(Convert.ToString(row.Cells["FilterName"].Value, CultureInfo.InvariantCulture) ?? string.Empty);
+                    names.Add(FilterConfigRules.Sanitize(Convert.ToString(row.Cells["FilterName"].Value, CultureInfo.InvariantCulture)));
                     int v;
-                    int.TryParse(Convert.ToString(row.Cells["Offset"].Value, CultureInfo.InvariantCulture), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out v);
+                    if (!int.TryParse(Convert.ToString(row.Cells["Offset"].Value, CultureInfo.InvariantCulture), NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out v) || v < -32768 || v > 32767)
+                    {
+                        MessageBox.Show(this, "The focus offset of filter " + (offsets.Count + 1) + " is not a whole number between -32768 and 32767.", "OpenWheel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        DialogResult = DialogResult.None;   // keep the dialog open
+                        return;
+                    }
                     offsets.Add(v);
                 }
-                Settings.SaveNamesAndOffsets(names, offsets);
+
+                if (Server.Controller.Snapshot.FilterConfigSupported)
+                {
+                    Cursor = Cursors.WaitCursor;
+                    CommandResult r;
+                    try { r = Server.Controller.SaveFilterConfig(names.ToArray(), offsets.ToArray()); }
+                    finally { Cursor = Cursors.Default; }
+                    if (!r.Success)
+                    {
+                        MessageBox.Show(this, "Could not store the filters in the wheel:\r\n" + r.Message, "OpenWheel", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        DialogResult = DialogResult.None;   // keep the dialog open
+                        return;
+                    }
+                }
+                else
+                {
+                    Settings.SaveNamesAndOffsets(names, offsets);   // older firmware: PC-side store
+                }
             }
         }
     }

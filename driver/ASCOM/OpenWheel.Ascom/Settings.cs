@@ -66,7 +66,24 @@ namespace OpenWheel.Ascom
 
         // ---------------------------------------------------------------- names and focus offsets
 
-        /// <summary>Names for <paramref name="count"/> slots: stored names, padded with "Filter N".</summary>
+        public static string DefaultName(int slot)
+        {
+            return "Filter " + (slot + 1).ToString(CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>Fills empty entries with "Filter N" (for clients that need a name for every slot).</summary>
+        public static string[] WithDefaults(string[] names, int count)
+        {
+            var result = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                string n = names != null && i < names.Length ? (names[i] ?? string.Empty).Trim() : string.Empty;
+                result[i] = n.Length > 0 ? n : DefaultName(i);
+            }
+            return result;
+        }
+
+        /// <summary>PC-side names (fallback for firmware without name storage), padded with "Filter N".</summary>
         public static string[] GetNames(int count)
         {
             string[] stored = Get(NamesKey, string.Empty).Split(Sep);

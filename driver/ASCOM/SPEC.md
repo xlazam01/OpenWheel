@@ -65,8 +65,8 @@ IFilterWheelV3 (Platform 7, async connect supported).
 | `Connected` | Legacy sync wrapper around the above for old clients. |
 | `Position` get | Cached from STATUS poll; **-1 while moving/homing/calibrating** (ASCOM spec). |
 | `Position` set | Validate 0..N-1, send `:07<n>#`, return immediately; poll STATUS until idle. Out of range -> `InvalidValueException`. |
-| `Names` | Per-driver Profile (ASCOM Profile store), editable in setup dialog; length = N slots from `:16#`. |
-| `FocusOffsets` | Per-driver Profile, editable in setup dialog. NINA keeps its own too (documented). |
+| `Names` | Stored **in the wheel's EEPROM** (`:36`/`:37`), read on connect and cached; editable in the setup dialog. Empty entries are reported as "Filter N". Firmware without name storage falls back to the ASCOM Profile on the PC. |
+| `FocusOffsets` | Stored in the wheel (`:38`/`:39`), same rules as `Names`. NINA keeps its own list and can import these. |
 | `Description`, `DriverInfo`, `DriverVersion`, `InterfaceVersion`, `Name` | Static; Name includes firmware version after connect. |
 | `SupportedActions` / `Action(name, params)` | Extra info, see section 5. |
 | `CommandBlind/Bool/String` | Raw passthrough, rate-limited. |

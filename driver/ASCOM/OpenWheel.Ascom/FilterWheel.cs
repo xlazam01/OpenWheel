@@ -191,6 +191,8 @@ namespace OpenWheel.Ascom
             {
                 WheelSnapshot s = RequireConnected();
                 if (s.SlotCount <= 0) throw new DriverException("The OpenWheel is not calibrated: its number of filters is unknown.");
+                // names live in the wheel's EEPROM; firmware without that feature falls back to the PC-side store
+                if (s.FilterConfigSupported && s.FilterNames != null) return Settings.WithDefaults(s.FilterNames, s.SlotCount);
                 return Settings.GetNames(s.SlotCount);
             }
         }
@@ -201,6 +203,7 @@ namespace OpenWheel.Ascom
             {
                 WheelSnapshot s = RequireConnected();
                 if (s.SlotCount <= 0) throw new DriverException("The OpenWheel is not calibrated: its number of filters is unknown.");
+                if (s.FilterConfigSupported && s.FocusOffsets != null) return (int[])s.FocusOffsets.Clone();
                 return Settings.GetFocusOffsets(s.SlotCount);
             }
         }

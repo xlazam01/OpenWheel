@@ -45,6 +45,9 @@ namespace OpenWheel.Core.Tests
         public int ProtocolVersion = 2;
         public bool OldFirmware;               // answers ERR,10 to :32#
         public bool StuckMoving;               // a started move never finishes
+        public bool NoFilterConfig;            // firmware without name storage: ERR,10 to commands 36..39
+        public string[] FilterNames = { "", "", "", "" };
+        public int[] FocusOffsets = { 0, 0, 0, 0 };
         public bool DropReplyToMove;           // executes :07 but does not answer it
         public Misbehavior Mode = Misbehavior.None;
         public int ReplyDelayMs = 0;
@@ -169,6 +172,20 @@ namespace OpenWheel.Core.Tests
                 Reply("OK"); return;
             }
             if (body == "34,0") { ErrorCode = 0; Reply("OK"); return; }
+            if (body == "36" || body == "37" || body == "38" || body == "39" || body.StartsWith("37 ", StringComparison.Ordinal) || body.StartsWith("39 ", StringComparison.Ordinal))
+            {
+                if (NoFilterConfig) { Reply("ERR,10"); return; }
+                if (body == "36") { Reply(string.Join(",", FilterNames)); return; }
+                if (body == "38") { Reply(string.Join(",", Array.ConvertAll(FocusOffsets, v => v.ToString()))); return; }
+                int comma = body.IndexOf(',');
+                int slot;
+                if (comma < 0 || !int.TryParse(body.Substring(2, comma - 2).Trim(), out slot) || slot < 0 || slot >= 4) { Reply("ERR,7"); return; }
+                string rest = body.Substring(comma + 1);
+                if (body.StartsWith("37", StringComparison.Ordinal)) { FilterNames[slot] = rest.Trim(); Reply("OK"); return; }
+                int off;
+                if (!int.TryParse(rest, out off)) { Reply("ERR,7"); return; }
+                FocusOffsets[slot] = off; Reply("OK"); return;
+            }
             if (body.StartsWith("07", StringComparison.Ordinal))
             {
                 int slot;

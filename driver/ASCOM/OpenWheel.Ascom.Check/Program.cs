@@ -63,6 +63,25 @@ internal static class Program
         fw.Position = target;
         Check("setting the current slot again is a no-op", fw.Position == target);
 
+        // filter names stored in the wheel
+        object controller = Type.GetType("OpenWheel.Ascom.Server, OpenWheel.Ascom.Server").GetProperty("Controller", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).GetValue(null, null);
+        Type ctype = controller.GetType();
+        object snap = ctype.GetProperty("Snapshot").GetValue(controller, null);
+        bool supported = (bool)snap.GetType().GetProperty("FilterConfigSupported").GetValue(snap, null);
+        if (!supported) Console.WriteLine("  info  firmware has no name storage: names test skipped");
+        else
+        {
+            string[] oldNames = fw.Names; int[] oldOffs = fw.FocusOffsets;
+            var save = ctype.GetMethod("SaveFilterConfig");
+            object res = save.Invoke(controller, new object[] { new[] { "Lum", "", "H-alpha 7nm", "OIII" }, new[] { 0, 5, -120, 30 }, 20000 });
+            Check("names saved to the wheel", (bool)res.GetType().GetProperty("Success").GetValue(res, null), Convert.ToString(res));
+            string[] nn = fw.Names; int[] oo = fw.FocusOffsets;
+            Check("ASCOM Names come from the wheel (empty one becomes 'Filter 2')", nn[0] == "Lum" && nn[1] == "Filter 2" && nn[2] == "H-alpha 7nm" && nn[3] == "OIII", string.Join(" | ", nn));
+            Check("ASCOM FocusOffsets come from the wheel", oo[1] == 5 && oo[2] == -120 && oo[3] == 30);
+            res = save.Invoke(controller, new object[] { new[] { "", "", "", "" }, new[] { 0, 0, 0, 0 }, 20000 });
+            Check("names cleared again", (bool)res.GetType().GetProperty("Success").GetValue(res, null));
+        }
+
         // second client instance shares the same connection
         var fw2 = (IFilterWheelV3)Activator.CreateInstance(t);
         fw2.Connect();

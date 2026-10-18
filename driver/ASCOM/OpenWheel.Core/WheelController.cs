@@ -47,6 +47,13 @@ namespace OpenWheel.Core
         /// <summary>Last good status, null until the first poll succeeded.</summary>
         public WheelStatus Status { get; internal set; }
         public DateTime StatusTimeUtc { get; internal set; }
+        /// <summary>Names stored in the wheel (one per slot, empty = not set), or null if not read yet / not supported.</summary>
+        public string[] FilterNames { get; internal set; }
+        /// <summary>Focus offsets stored in the wheel (one per slot), or null if not read yet / not supported.</summary>
+        public int[] FocusOffsets { get; internal set; }
+        /// <summary>False when the firmware has no name storage (older firmware); then the driver keeps names on the PC.</summary>
+        public bool FilterConfigSupported { get; internal set; }
+
         /// <summary>Human readable reason for the last problem (lost connection, device fault, watchdog), or null.</summary>
         public string Problem { get; internal set; }
 
@@ -119,6 +126,11 @@ namespace OpenWheel.Core
         private long busySinceMs = -1;
         private bool watchdogTripped;
         private string problem;
+        private string[] cfgNames;
+        private int[] cfgOffsets;
+        private int cfgSlots = -1;           // slot count the cached config belongs to
+        private bool cfgSupported = true;    // false once the wheel answered ERR,10 to :36#
+        private long cfgNextTryMs;
         private string stickyProblem;   // e.g. watchdog halt; survives status polls until cleared by the next successful command
 
         private static readonly long start = Stopwatch.GetTimestamp();
@@ -337,6 +349,9 @@ namespace OpenWheel.Core
                     problem = null;
                     stickyProblem = null;
                     nextPollMs = NowMs() + (st.Busy ? opt.PollBusyMs : opt.PollIdleMs);
+                    ResetFilterConfig();
+                    ReadFilterConfig(st.Slots);
+                    if (transport == null) return;   // connection was lost while reading
                     LogMsg("connected " + l.Name + " " + id + " " + st);
                     Publish(ConnectionState.Connected, id, st, ProblemFor(st));
                     return;
@@ -398,6 +413,7 @@ namespace OpenWheel.Core
                 WheelStatus st = snapshot.Status;
                 nextPollMs = NowMs() + (st != null && st.Busy ? opt.PollBusyMs : opt.PollIdleMs);
                 Watchdog(st);
+                if (snapshot.Connection == ConnectionState.Connected) MaybeRefreshFilterConfig(st);
             }
             else
             {
@@ -447,6 +463,102 @@ namespace OpenWheel.Core
             }
         }
 
+        // ------------------------------------------------------------------ filter names / focus offsets (stored in the wheel)
+
+        private void ResetFilterConfig()
+        {
+            cfgNames = null;
+            cfgOffsets = null;
+            cfgSlots = -1;
+            cfgSupported = true;
+            cfgNextTryMs = 0;
+        }
+
+        /// <summary>Reads names and offsets from the wheel into the cache. Returns true when the cache is valid.</summary>
+        private bool ReadFilterConfig(int slots)
+        {
+            if (slots <= 0) { cfgNames = null; cfgOffsets = null; cfgSlots = -1; return false; }
+
+            Reply n = Send(Commands.GetNames);
+            if (transport == null) return false;
+            if (n.Kind == ReplyKind.Error && n.ErrorCode == (int)WheelError.UnknownCommand)
+            {
+                cfgSupported = false;   // firmware without name storage: the driver keeps names on the PC
+                cfgNames = null; cfgOffsets = null;
+                LogMsg("firmware has no filter name storage");
+                return false;
+            }
+            if (n.Kind != ReplyKind.Value) { cfgNextTryMs = NowMs() + 3000; return false; }
+
+            Reply o = Send(Commands.GetFocusOffsets);
+            if (o.Kind != ReplyKind.Value) { cfgNextTryMs = NowMs() + 3000; return false; }
+
+            int[] offsets = FilterConfigRules.ParseOffsets(o.Value, slots);
+            if (offsets == null) { cfgNextTryMs = NowMs() + 3000; return false; }
+
+            cfgNames = FilterConfigRules.ParseNames(n.Value, slots);
+            cfgOffsets = offsets;
+            cfgSlots = slots;
+            cfgSupported = true;
+            return true;
+        }
+
+        /// <summary>Loads the config when it is missing or the wheel was recalibrated to another slot count.</summary>
+        private void MaybeRefreshFilterConfig(WheelStatus st)
+        {
+            if (!cfgSupported || st == null || st.Busy || st.Slots <= 0) return;
+            if (cfgNames != null && cfgSlots == st.Slots) return;
+            if (NowMs() < cfgNextTryMs) return;
+            if (ReadFilterConfig(st.Slots) && snapshot.Connection == ConnectionState.Connected)
+                Publish(ConnectionState.Connected, snapshot.Identity, snapshot.Status, snapshot.Problem);
+        }
+
+        /// <summary>
+        /// Writes names and focus offsets to the wheel (EEPROM). Only entries that differ from the cache are
+        /// sent; each takes the wheel about 0.25 s. Not allowed while the wheel moves (the EEPROM write
+        /// stalls the firmware loop). Invalid names are rejected before anything is sent.
+        /// </summary>
+        public CommandResult SaveFilterConfig(string[] names, int[] offsets, int waitMs = 20000)
+        {
+            if (names == null || offsets == null || names.Length != offsets.Length || names.Length > FilterConfigRules.MaxSlots)
+                return CommandResult.Fail("invalid filter configuration");
+            foreach (string n in names)
+                if (!FilterConfigRules.IsValidName(n)) return CommandResult.Fail("invalid filter name \"" + n + "\" (max 15 characters, none of , # : |)");
+
+            return Submit(() => DoSaveFilterConfig((string[])names.Clone(), (int[])offsets.Clone()), waitMs, false);
+        }
+
+        private CommandResult DoSaveFilterConfig(string[] names, int[] offsets)
+        {
+            WheelStatus st = snapshot.Status;
+            if (st == null) return CommandResult.Fail("wheel status unknown");
+            if (st.Busy) return CommandResult.Fail("the wheel is moving: wait until it has stopped", (int)WheelError.Busy);
+            if (!cfgSupported) return CommandResult.Fail("this firmware cannot store filter names (update the firmware)");
+
+            for (int i = 0; i < names.Length; i++)
+            {
+                string oldName = cfgNames != null && i < cfgNames.Length ? cfgNames[i] : null;
+                if (oldName == null || oldName != names[i])
+                {
+                    Reply r = Send(Commands.SetName(i, names[i]), 2000);
+                    if (snapshot.Connection != ConnectionState.Connected) return CommandResult.Fail("connection lost");
+                    if (!r.IsOk) return r.Kind == ReplyKind.Error ? Rejected(r) : CommandResult.Fail("no valid answer from the wheel while saving name " + (i + 1));
+                }
+                int oldOff = cfgOffsets != null && i < cfgOffsets.Length ? cfgOffsets[i] : int.MinValue;
+                if (oldOff != offsets[i])
+                {
+                    Reply r = Send(Commands.SetFocusOffset(i, offsets[i]), 2000);
+                    if (snapshot.Connection != ConnectionState.Connected) return CommandResult.Fail("connection lost");
+                    if (!r.IsOk) return r.Kind == ReplyKind.Error ? Rejected(r) : CommandResult.Fail("no valid answer from the wheel while saving offset " + (i + 1));
+                }
+            }
+
+            // read back what the wheel really stored
+            if (!ReadFilterConfig(st.Slots)) return CommandResult.Fail("saved, but reading the values back failed");
+            Publish(ConnectionState.Connected, snapshot.Identity, snapshot.Status, snapshot.Problem);
+            return CommandResult.Ok;
+        }
+
         // ------------------------------------------------------------------ command implementations (run on the worker)
 
         private CommandResult DoMove(int slot)
@@ -488,13 +600,13 @@ namespace OpenWheel.Core
         // ------------------------------------------------------------------ transport with failure accounting
 
         /// <summary>Sends one command. A broken link or too many bad replies in a row ends the connection.</summary>
-        private Reply Send(string command)
+        private Reply Send(string command, int timeoutMs = 0)
         {
             if (transport == null) return Reply.TimeoutReply;
             Reply r;
             try
             {
-                r = transport.Execute(command, opt.CommandTimeoutMs);
+                r = transport.Execute(command, timeoutMs > 0 ? timeoutMs : opt.CommandTimeoutMs);
             }
             catch (LinkException ex)
             {
@@ -583,7 +695,10 @@ namespace OpenWheel.Core
                 Identity = id,
                 Status = st,
                 StatusTimeUtc = st == null ? DateTime.MinValue : DateTime.UtcNow,
-                Problem = prob
+                Problem = prob,
+                FilterNames = cfgNames,
+                FocusOffsets = cfgOffsets,
+                FilterConfigSupported = cfgSupported
             };
             snapshot = s;
             Action<WheelSnapshot> h = SnapshotChanged;

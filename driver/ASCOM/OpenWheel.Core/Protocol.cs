@@ -148,6 +148,63 @@ namespace OpenWheel.Core
         }
     }
 
+    /// <summary>Filter names and focus offsets as stored in the wheel (commands 36..39).</summary>
+    public static class FilterConfigRules
+    {
+        public const int MaxNameLength = 15;
+        public const int MaxSlots = 9;
+
+        /// <summary>0..15 printable ASCII characters, none of , # : |  (same rule as the firmware).</summary>
+        public static bool IsValidName(string name)
+        {
+            if (name == null || name.Length > MaxNameLength) return false;
+            foreach (char c in name)
+            {
+                if (c < 0x20 || c > 0x7E) return false;
+                if (c == ',' || c == '#' || c == ':' || c == '|') return false;
+            }
+            return true;
+        }
+
+        /// <summary>Makes a user typed name acceptable: trims, replaces forbidden characters by '-', cuts to 15.</summary>
+        public static string Sanitize(string name)
+        {
+            if (name == null) return string.Empty;
+            var sb = new System.Text.StringBuilder();
+            foreach (char c in name.Trim())
+            {
+                if (c < 0x20 || c > 0x7E) continue;
+                sb.Append(c == ',' || c == '#' || c == ':' || c == '|' ? '-' : c);
+                if (sb.Length == MaxNameLength) break;
+            }
+            return sb.ToString().Trim();
+        }
+
+        /// <summary>Splits "a,b,,d" into exactly <paramref name="slots"/> entries (empty entries kept, padded/cut).</summary>
+        public static string[] ParseNames(string value, int slots)
+        {
+            var result = new string[slots];
+            string[] p = value == null ? new string[0] : value.Split(',');
+            for (int i = 0; i < slots; i++) result[i] = i < p.Length ? p[i].Trim() : string.Empty;
+            return result;
+        }
+
+        /// <summary>Parses "0,-35,120" into <paramref name="slots"/> integers; null if any entry is not a number.</summary>
+        public static int[] ParseOffsets(string value, int slots)
+        {
+            var result = new int[slots];
+            string[] p = value == null ? new string[0] : value.Split(',');
+            for (int i = 0; i < slots; i++)
+            {
+                if (i >= p.Length) continue;
+                int v;
+                if (!int.TryParse(p[i], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out v) || v < -32768 || v > 32767) return null;
+                result[i] = v;
+            }
+            return result;
+        }
+    }
+
     public enum ReplyKind
     {
         /// <summary>Query result "value#".</summary>
@@ -229,6 +286,19 @@ namespace OpenWheel.Core
         {
             if (slot < 0 || slot > 255) throw new ArgumentOutOfRangeException("slot");
             return ":07 " + slot.ToString(CultureInfo.InvariantCulture) + "#";
+        }
+
+        public const string GetNames = ":36#";
+        public const string GetFocusOffsets = ":38#";
+
+        public static string SetName(int slot, string name)
+        {
+            return ":37 " + slot.ToString(CultureInfo.InvariantCulture) + "," + name + "#";
+        }
+
+        public static string SetFocusOffset(int slot, int offset)
+        {
+            return ":39 " + slot.ToString(CultureInfo.InvariantCulture) + "," + offset.ToString(CultureInfo.InvariantCulture) + "#";
         }
 
         public static string MoveSteps(int steps)
