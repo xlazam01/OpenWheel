@@ -46,9 +46,9 @@ while resetting. Open `fw/` (not the repository root) in VS Code with the Platfo
 
 ## Status
 
-Firmware protocol v2 (acknowledged commands, status and error codes) is implemented; the ASCOM
-driver is specified in [driver/ASCOM/SPEC.md](driver/ASCOM/SPEC.md) and not built yet. The GUI and
-hardware tests still use the old unacknowledged protocol and need updating.
+Firmware protocol v2 (acknowledged commands, status and error codes) is implemented and passes
+the hardware acceptance tests on a real board. The test GUI and the tests speak protocol v2. The
+ASCOM driver is specified in [driver/ASCOM/SPEC.md](driver/ASCOM/SPEC.md) and not built yet.
 
 ## Acknowledgements
 

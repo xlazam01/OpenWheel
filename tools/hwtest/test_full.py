@@ -26,29 +26,25 @@ def test_full_6_random_moves(fw):
 def test_full_11_reset_to_defaults(fw):
     backup = fw.snapshot()
     try:
-        fw.send(":24#")  # clears calibration and homes
-        time.sleep(1.0)
-        fw.wait_idle(timeout=max(fw.move_timeout, 60))
+        fw.cmd(":24#")  # clears and saves calibration (the wheel recalibrates on next boot)
         assert fw.raw(":25#") == "OK#"
-        assert fw.slots >= 1
     finally:
         fw.restore(backup)
-        fw.send(":23#")
-        time.sleep(0.3)
+        fw.cmd(":23#")
     assert fw.snapshot() == backup, "calibration could not be restored after reset"
 
 
 @pytest.mark.destructive
 def test_full_12_dfu_roundtrip(fw):
-    root = Path(__file__).resolve().parent.parent
-    if not (root / ".pio/build/STM32G0B1/firmware.bin").exists():
-        pytest.fail("no build: run 'pio run -e STM32G0B1' first")
+    root = Path(__file__).resolve().parents[2]
+    if not (root / "fw/.pio/build/STM32G0B1/firmware.bin").exists():
+        pytest.fail("no build: run 'pio run -d fw -e STM32G0B1' first")
     pio = Path(os.environ["USERPROFILE"]) / ".platformio/penv/Scripts/pio.exe"
     version = fw.get(18)
-    fw.send(":31#")
+    fw.cmd(":31#")
     fw.close()
     time.sleep(4)
-    r = subprocess.run([str(pio), "run", "-e", "STM32G0B1", "-t", "upload"], cwd=root,
+    r = subprocess.run([str(pio), "run", "-d", "fw", "-e", "STM32G0B1", "-t", "upload"], cwd=root,
                        capture_output=True, text=True, timeout=300)
     out = r.stdout + r.stderr
     assert "Download done" in out, out[-1500:]  # trailing 'get_status' error is expected

@@ -6,7 +6,10 @@ opening the port on boards that reset on DTR; the firmware does not gate output 
 ## Framing
 
 - A command is `:NN[params]#`: `:` starts it, `NN` is a two-digit command number, `#` ends it.
-- Bytes outside `:...#` are ignored. A `:` inside a command restarts it. Max line length 47 bytes.
+- Bytes outside `:...#` are ignored. A `:` inside a command restarts it. Commands must be at most
+  46 characters between `:` and `#`; longer lines are answered `ERR,11`. Hosts should send one
+  command at a time and not burst more than about 64 bytes: the USB receive buffer of the wheel can
+  overrun on large bursts, losing the closing `#` (then no reply comes, so always use a timeout).
 - Parameters accept `:07 3#`, `:07,3#` and `:073#`; two values are written `slot,value`.
 - **Every command is answered** with one line ending in `#`:
 

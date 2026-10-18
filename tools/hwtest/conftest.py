@@ -1,4 +1,5 @@
-"""Hardware-in-the-loop test setup for the OpenWheel firmware (USB CDC, protocol ':NN<params>#')."""
+"""Hardware-in-the-loop test setup for the OpenWheel firmware (USB CDC, protocol v2 ':NN<params>#').
+Every command is answered: value#, OK# or ERR,<code>#."""
 import time
 from datetime import datetime
 from pathlib import Path
@@ -60,11 +61,17 @@ class Wheel:
             time.sleep(0.5)
         raise AssertionError(f"{self.port_name} did not come back within {timeout}s")
 
-    def raw(self, text, wait=1.0):
-        """Send text, return response up to and including '#', or '' on timeout."""
+    def raw(self, text, wait=1.0, chunk=None):
+        """Send text, return response up to and including '#', or '' on timeout.
+        chunk: send in pieces of this many bytes (the USB CDC receive buffer of the wheel
+        can overrun if more than ~100 bytes arrive in one burst)."""
         self.ser.reset_input_buffer()
-        self.ser.write(text.encode("latin-1"))
-        self.ser.flush()
+        data = text.encode("latin-1")
+        for i in range(0, len(data), chunk or len(data) or 1):
+            self.ser.write(data[i:i + (chunk or len(data))])
+            self.ser.flush()
+            if chunk:
+                time.sleep(0.005)
         self.ser.timeout = wait
         out = b""
         while True:
@@ -77,9 +84,27 @@ class Wheel:
         return out.decode("ascii", errors="ignore")
 
     def send(self, text):
-        """Send text that produces no response."""
+        """Send raw text without reading a reply (only for deliberately malformed input)."""
         self.ser.write(text.encode("latin-1"))
         self.ser.flush()
+
+    def cmd(self, text, expect="OK#", wait=3.0, chunk=None):
+        """Send a command and assert the exact reply (default OK#). Returns the reply."""
+        r = self.raw(text, wait=wait, chunk=chunk)
+        assert r == expect, f"{text!r}: expected {expect!r}, got {r!r}"
+        return r
+
+    def err(self, text, code, wait=2.0, chunk=None):
+        """Send a command that must be rejected with ERR,<code>#."""
+        return self.cmd(text, expect=f"ERR,{code}#", wait=wait, chunk=chunk)
+
+    def status(self):
+        """Parse :33# -> dict(state, slot, target, slots, error, flags)."""
+        r = self.raw(":33#")
+        parts = r.rstrip("#").split(",")
+        assert len(parts) == 7 and parts[0] == "S", f"bad status {r!r}"
+        keys = ("state", "slot", "target", "slots", "error", "flags")
+        return dict(zip(keys, map(int, parts[1:])))
 
     def get(self, n, params=""):
         r = self.raw(f":{n:02d}{params}#")
@@ -93,9 +118,8 @@ class Wheel:
         return [int(x) for x in self.get(n).split(",") if x != ""]
 
     def set(self, n, params):
-        self.send(f":{n:02d} {params}#")
-        # a setter blocks the firmware ~0.4 s (EEPROM write); a ping answers only once it is done
-        assert self.raw(":25#", wait=3.0) == "OK#", f"no answer after setter {n}"
+        # a setter blocks the firmware ~0.4 s (EEPROM write) and then answers OK#
+        self.cmd(f":{n:02d} {params}#", wait=3.0)
 
     @property
     def slots(self):
@@ -110,13 +134,15 @@ class Wheel:
         t0 = time.time()
         time.sleep(0.3)  # allow the move to start
         while time.time() - t0 < timeout:
-            if not self.moving() and self.get_int(6) != -1:
+            st = self.status()
+            assert st["state"] != 5 and st["error"] == 0, f"device fault during move: {st}"
+            if st["state"] == 1:
                 return time.time() - t0
             time.sleep(0.1)
         raise AssertionError(f"still moving after {timeout}s")
 
     def move(self, slot):
-        self.send(f":07{slot}#")
+        self.cmd(f":07{slot}#")
         return self.wait_idle()
 
     def snapshot(self):

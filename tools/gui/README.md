@@ -5,4 +5,5 @@ Small PyQt5 GUI to exercise the wheel over its serial protocol (see `docs/PROTOC
     pip install -r requirements.txt
     python main.py
 
-Note: written for protocol v1 (unacknowledged setters). It still needs updating for protocol v2.
+Speaks protocol v2 (every command acknowledged). Per-slot user offsets are not available in the
+protocol yet (only slot 0), so the GUI offers them for slot 0 only.

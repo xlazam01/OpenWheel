@@ -1,11 +1,12 @@
 """
 FilterWheel Serial Communication Module
-Handles serial communication with the filter wheel using the OpenWheel protocol
+Handles serial communication with the filter wheel using the OpenWheel protocol v2
+(see docs/PROTOCOL.md): every command is answered with "<value>#", "OK#" or "ERR,<code>#".
 """
 
 import serial
 import serial.tools.list_ports
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 
 class FilterWheelComm:
@@ -15,6 +16,7 @@ class FilterWheelComm:
         self.serial_port: Optional[serial.Serial] = None
         self.is_connected = False
         self.baud_rate = 115200
+        self.last_error_code = 0
 
     def get_available_ports(self) -> List[str]:
         """Get list of available COM ports"""
@@ -81,17 +83,59 @@ class FilterWheelComm:
             return None
 
     def send_command_no_response(self, command: str) -> bool:
-        """Send command that doesn't return a response (setter commands)"""
-        if not self.is_connected or not self.serial_port:
-            return False
-
-        try:
-            self.serial_port.write(command.encode())
-            self.serial_port.flush()
+        """Send a setter/action command and return True when the wheel answered OK#.
+        (Name kept for the callers; protocol v2 acknowledges every command.)
+        On ERR,<code># the code is stored in self.last_error_code."""
+        response = self.send_command(command)
+        if response == "OK#":
+            self.last_error_code = 0
             return True
-        except Exception as e:
-            print(f"Communication error: {e}")
-            return False
+        if response and response.startswith("ERR,"):
+            try:
+                self.last_error_code = int(response[4:].rstrip("#"))
+            except ValueError:
+                self.last_error_code = -1
+        return False
+
+    def identify(self) -> Optional[Dict[str, str]]:
+        """:32# -> {'model','firmware','protocol','serial'} or None if not an OpenWheel."""
+        response = self.send_command(":32#")
+        if response and response.endswith("#"):
+            parts = response[:-1].split(",")
+            if len(parts) == 5 and parts[0] == "OPENWHEEL":
+                return dict(zip(("model", "firmware", "protocol", "serial"), parts[1:]))
+        return None
+
+    def get_status(self) -> Optional[Dict[str, int]]:
+        """:33# -> {'state','slot','target','slots','error','flags'} or None."""
+        response = self.send_command(":33#")
+        if response and response.endswith("#"):
+            parts = response[:-1].split(",")
+            if len(parts) == 7 and parts[0] == "S":
+                try:
+                    return dict(zip(("state", "slot", "target", "slots", "error", "flags"),
+                                    map(int, parts[1:])))
+                except ValueError:
+                    return None
+        return None
+
+    def get_error(self) -> Optional[int]:
+        """:34# -> sticky error code (0 = none)"""
+        response = self.send_command(":34#")
+        if response and response.startswith("E,") and response.endswith("#"):
+            try:
+                return int(response[2:-1])
+            except ValueError:
+                return None
+        return None
+
+    def clear_error(self) -> bool:
+        """:34,0# clear the sticky error"""
+        return self.send_command_no_response(":34,0#")
+
+    def calibrate(self) -> bool:
+        """:35# start calibration"""
+        return self.send_command_no_response(":35#")
 
     # Protocol command methods (placeholders for now)
 
@@ -101,12 +145,11 @@ class FilterWheelComm:
         return response == "OK#" if response else False
 
     def get_calibration_status(self) -> Optional[int]:
-        """Infer calibration by checking num slots — no dedicated firmware command exists.
-        Returns 1 if slots > 0 (calibrated), 0 otherwise."""
-        num_slots = self.get_num_slots()
-        if num_slots is None:
+        """1 if the wheel reports valid calibration (status flag bit0), else 0."""
+        status = self.get_status()
+        if status is None:
             return None
-        return 1 if num_slots > 0 else 0
+        return status["flags"] & 1
 
     def get_current_slot(self) -> Optional[int]:
         """Get current slot position (:06#)"""
@@ -119,11 +162,11 @@ class FilterWheelComm:
         return None
 
     def move_to_slot(self, slot: int) -> bool:
-        """Move to specified slot (:07N#) - No response expected"""
-        return self.send_command_no_response(f":07{slot}#")
+        """Move to specified slot (:07 N#). True if the move was accepted (OK#)."""
+        return self.send_command_no_response(f":07 {slot}#")
 
     def go_home(self) -> bool:
-        """Go to home position (:20#) - No response expected"""
+        """Go to home position (:20#)"""
         return self.send_command_no_response(":20#")
 
     def get_firmware_version(self) -> Optional[str]:
@@ -144,13 +187,11 @@ class FilterWheelComm:
         return None
 
     def set_base_offset(self, offset: int) -> bool:
-        """Set base offset (:29 NNN#). Waits for the EEPROM write (~0.4 s) via a ping."""
-        if not self.send_command_no_response(f":29 {offset}#"):
-            return False
+        """Set base offset (:29 NNN#). The wheel answers OK# after the EEPROM write (~0.4 s)."""
         old = self.serial_port.timeout
         self.serial_port.timeout = 3.0
         try:
-            return self.ping()
+            return self.send_command_no_response(f":29 {offset}#")
         finally:
             self.serial_port.timeout = old
 
@@ -172,50 +213,39 @@ class FilterWheelComm:
         return None
 
     def halt(self) -> bool:
-        """Stop movement immediately (:30#) - No response expected"""
+        """Stop movement immediately (:30#)"""
         return self.send_command_no_response(":30#")
 
     def step_move(self, steps: int) -> bool:
-        """Move by specific number of steps (:21SSSSS#) - No response expected"""
-        return self.send_command_no_response(f":21{steps}#")
+        """Move by specific number of steps (:21 SSSSS#)"""
+        return self.send_command_no_response(f":21 {steps}#")
 
     def save_settings(self) -> bool:
-        """Write settings to EEPROM (:23#) - No response expected"""
+        """Write settings to EEPROM (:23#)"""
         return self.send_command_no_response(":23#")
 
     def reset_to_defaults(self) -> bool:
-        """Reset calibration to defaults (:24#) - No response expected"""
+        """Reset calibration to defaults (:24#); the wheel recalibrates on next boot"""
         return self.send_command_no_response(":24#")
 
     def get_user_offset(self, slot: int) -> Optional[int]:
-        """Get per-slot (optical) offset via :10# (all offsets), then index into result"""
-        offsets = self.get_all_user_offsets()
-        if offsets and 0 <= slot < len(offsets):
-            return offsets[slot]
-        return None
-
-    def set_user_offset(self, slot: int, offset: int) -> bool:
-        """Set per-slot (optical) offset (:11 slot,offset#). The firmware writes EEPROM
-        (~0.4 s) before answering anything else, so wait for a ping to confirm it is done."""
-        if not self.send_command_no_response(f":11 {slot},{offset}#"):
-            return False
-        old = self.serial_port.timeout
-        self.serial_port.timeout = 3.0
-        try:
-            return self.ping()
-        finally:
-            self.serial_port.timeout = old
-
-    def get_all_user_offsets(self) -> Optional[List[int]]:
-        """Get per-slot (optical) offsets for all slots (:10#)"""
-        response = self.send_command(":10#")
+        """User offset of a slot. The protocol only exposes the user offset of slot 0 (:00#);
+        other slots are not available (:12/:13 are motor steps, NOT offsets: never use them here)."""
+        if slot != 0:
+            return None
+        response = self.send_command(":00#")
         if response and response.endswith('#'):
             try:
-                offsets_str = response[:-1]
-                return [int(x) for x in offsets_str.split(',')]
+                return int(response[:-1])
             except ValueError:
                 return None
         return None
+
+    def set_user_offset(self, slot: int, offset: int) -> bool:
+        """Set the user offset of slot 0 (:01 N#). Other slots are not supported by the protocol."""
+        if slot != 0:
+            return False
+        return self.send_command_no_response(f":01 {offset}#")
 
     def get_startup_behavior(self) -> Optional[int]:
         """Get home on connect setting (:08#)"""
@@ -228,9 +258,9 @@ class FilterWheelComm:
         return None
 
     def set_startup_behavior(self, behavior: int) -> bool:
-        """Set home on connect (:09 N#) - 0=no home, 1=home - No response expected"""
+        """Set home on connect (:09 N#) - 0=no home, 1=home"""
         return self.send_command_no_response(f":09 {behavior}#")
 
     def reboot_to_dfu(self) -> bool:
-        """Reboot device into DFU bootloader mode (:31#) - No response expected"""
+        """Reboot device into DFU bootloader mode (:31#)"""
         return self.send_command_no_response(":31#")
