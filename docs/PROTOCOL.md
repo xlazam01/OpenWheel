@@ -52,11 +52,23 @@ soon as the move has started; poll `:33#` (or `:06#`) for completion.
 | 33 | status | | `S,<state>,<slot>,<target>,<slots>,<error>,<flags>#` |
 | 34 | read / clear sticky error | none / `0` | `E,<code>#` / OK |
 | 35 | start calibration | | OK |
+| 36 | get filter names of the calibrated slots | | `name0,name1,...#` (empty name = not set) |
+| 37 | set filter name | `slot,name` | OK |
+| 38 | get focus offsets of the calibrated slots | | `o0,o1,...#` |
+| 39 | set focus offset | `slot,offset` | OK |
 
 ### Identify (`:32#`)
 
 Example: `OPENWHEEL,G0B1,FW1.0.1,2,3A00FF12ABCD#`. A host should accept a port only if this parses and
 the protocol version is supported. Used for automatic detection after matching the USB VID/PID.
+
+### Filter names and focus offsets (`:36`..`:39`)
+
+Stored in the wheel's EEPROM in their own region (address 256, own magic and CRC), so they survive a
+calibration reset and follow the wheel to any PC. Up to 9 slots. A name is 0 to 15 printable ASCII
+characters and must not contain `,` `#` `:` or `|`; leading and trailing spaces are trimmed; an empty
+name clears the entry. Focus offsets are signed 16 bit. Each set command writes only the bytes that
+changed and answers after about 0.25 s. Firmware older than this feature answers `ERR,10`.
 
 ### Status (`:33#`)
 

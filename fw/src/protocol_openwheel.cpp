@@ -309,6 +309,57 @@ void ProtocolOpenWheel::handleCommand() {
             sendResult(filterWheel->calibrate());
             break;
 
+        case 36:  // Get filter names of the calibrated slots: "name0,name1,...#" (empty name = not set)
+            {
+                char buf[160];
+                int pos = 0;
+                uint8_t n = filterWheel->calibration.getNumSlots();
+                for (uint8_t i = 0; i < n && i < MAX_SLOTS; i++) {
+                    if (i > 0) buf[pos++] = ',';
+                    pos += snprintf(&buf[pos], sizeof(buf) - pos - 2, "%s", filterWheel->filterConfig.getName(i));
+                }
+                buf[pos++] = '#';
+                protoWrite((const uint8_t*)buf, pos);
+            }
+            break;
+
+        case 37:  // Set filter name: ":37 slot,name#" (name 0..15 printable chars, none of , # : |)
+            {
+                const char* q = params;
+                if (!parseNumber(q, a) || *q != ',' || a < 0 || a >= MAX_SLOTS) { sendError(FW_ERR_BAD_PARAM); break; }
+                q++;
+                char name[FILTER_NAME_LEN + 1];
+                while (*q == ' ') q++;
+                size_t len = strlen(q);
+                while (len > 0 && q[len - 1] == ' ') len--;
+                if (len >= FILTER_NAME_LEN) { sendError(FW_ERR_BAD_PARAM); break; }
+                memcpy(name, q, len);
+                name[len] = '\0';
+                if (!filterWheel->filterConfig.setName((uint8_t)a, name)) { sendError(FW_ERR_BAD_PARAM); break; }
+                sendResult(filterWheel->filterConfig.save() ? FW_OK : FW_ERR_EEPROM);
+            }
+            break;
+
+        case 38:  // Get focus offsets of the calibrated slots: "o0,o1,...#"
+            {
+                char buf[96];
+                int pos = 0;
+                uint8_t n = filterWheel->calibration.getNumSlots();
+                for (uint8_t i = 0; i < n && i < MAX_SLOTS; i++) {
+                    if (i > 0) buf[pos++] = ',';
+                    pos += snprintf(&buf[pos], sizeof(buf) - pos - 2, "%d", filterWheel->filterConfig.getFocusOffset(i));
+                }
+                buf[pos++] = '#';
+                protoWrite((const uint8_t*)buf, pos);
+            }
+            break;
+
+        case 39:  // Set focus offset: ":39 slot,offset#"
+            if (!parsePair(params, a, b) || a < 0 || a >= MAX_SLOTS || b < -32768 || b > 32767) { sendError(FW_ERR_BAD_PARAM); break; }
+            filterWheel->filterConfig.setFocusOffset((uint8_t)a, (int16_t)b);
+            sendResult(filterWheel->filterConfig.save() ? FW_OK : FW_ERR_EEPROM);
+            break;
+
         default:
             sendError(FW_ERR_UNKNOWN_CMD);
             break;

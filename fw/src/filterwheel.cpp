@@ -24,6 +24,7 @@ TMC2209Stepper  driver(&Serial2, R_SENSE, DRIVER_ADDRESS);
 HallSensor      hallSensor(PIN_HALL, PIN_STATUS_LED2);
 
 FilterWheel::FilterWheel() :
+    filterConfig(&eeprom),
     state(STATE_INIT),
     currentSlot(0),
     targetSlot(0),
@@ -117,6 +118,7 @@ void FilterWheel::init_hardware() {
 
 void FilterWheel::start() {
     init_hardware();
+    filterConfig.load();   // names / focus offsets; defaults (empty) if none stored
     hallSensor.start();
     button.begin();
     buttonCCW.begin();

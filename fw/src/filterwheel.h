@@ -9,6 +9,7 @@
 #include "TMCStepper.h"
 #include "SparkFun_External_EEPROM.h"
 #include "calibration_data.h"
+#include "filter_config.h"
 
 #include "error_codes.h"
 
@@ -58,6 +59,7 @@ public:
   // EEPROM and calibration management
   ExternalEEPROM eeprom;
   CalibrationManager calibration;
+  FilterConfig filterConfig;   // filter names and focus offsets (own EEPROM region)
 
 private:
   void init_hardware();
