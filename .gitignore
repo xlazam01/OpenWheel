@@ -1,0 +1,30 @@
+# Private working area: never published (kept in the separate local Gitea repo OpenWheel-private)
+/_private/
+
+# Build output / caches
+.pio/
+__pycache__/
+.pytest_cache/
+*.pyc
+tools/hwtest/reports/
+
+# Editor / local tool settings
+.vscode/
+.claude/settings.local.json
+
+# PlatformIO IDE re-creates an empty project skeleton in the repo root: not wanted, the project is in fw/
+/platformio.ini
+/src/
+/lib/
+/include/
+/test/
+
+# KiCad local state and backups
+hw/*-backups/
+hw/*.kicad_prl
+hw/*.kicad_sch-bak
+hw/*.lck
+hw/*.log
+hw/fp-info-cache
+hw/bck/
+hw/.history/
