@@ -1,6 +1,6 @@
 # OpenWheel ASCOM Driver — Specification (DRAFT v0.1)
 
-Status: firmware part (section 2) implemented and builds for STM32G0B1; not yet flashed or tested on hardware. Driver not started.
+Status: firmware (section 2) done and verified on hardware. `OpenWheel.Core` (transport, protocol, detection, worker, watchdog) is implemented and tested against a simulated misbehaving device (48 tests) and the real wheel. The ASCOM layer (LocalServer + FilterWheel + setup dialog) is not built yet.
 Items marked **[OPEN]** need a decision before implementation.
 
 ## 1. Goals
@@ -123,7 +123,7 @@ driver/ASCOM/
 - Q3 Status UI: **setup-dialog live-status tab only**, no tray app.
 - Q4 Legacy firmware: **new firmware required**; no manual-COM fallback for old devices.
 - Q5 Toolchain (probed on dev machine 2026-10-18): Visual Studio 2022 Community 17.0.4 and 2019, .NET Framework 4.8 targeting pack, ASCOM6 C# project templates, ASCOM Platform **6.6 SP2** (not 7), old Conform 6.5. Not found: Inno Setup, ConformU, `dotnet` on PATH.
-  Decision: C# / .NET Framework 4.8 in VS2022, target **IFilterWheelV2** (Platform 6.6 compatible, also runs on Platform 7). Async `Connect` (IFilterWheelV3) deferred until Platform 7 is installed; the worker-thread design already allows it. Install Inno Setup and ConformU before the installer/conformance stage. The installed myFilterWheel and Xagyl drivers can serve as behavioural references.
+  Platform 7.1 Update 3 is now installed (2026-10-18), so the driver targets **IFilterWheelV3** (async `Connect`, `DeviceState`). Architecture: `OpenWheel.Core` (net48, no ASCOM dependency, unit-tested) plus a thin ASCOM LocalServer layer on top. Install Inno Setup and ConformU before the installer/conformance stage. The installed myFilterWheel and Xagyl drivers can serve as behavioural references.
 
 ### Original questions (for reference)
 

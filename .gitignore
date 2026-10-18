@@ -29,3 +29,9 @@ hw/fp-info-cache
 hw/bck/
 hw/.history/
 hw/production/
+
+# .NET build output
+bin/
+obj/
+*.user
+.vs/

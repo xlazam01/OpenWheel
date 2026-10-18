@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenWheel.Core", "OpenWheel.Core\OpenWheel.Core.csproj", "{9D6CFF7D-E252-4EAB-BF93-2D96B29C080A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenWheel.Core.Tests", "OpenWheel.Core.Tests\OpenWheel.Core.Tests.csproj", "{706A14C6-AF55-439A-A453-28601E0334E9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenWheel.Probe", "OpenWheel.Probe\OpenWheel.Probe.csproj", "{D6556C41-A6A2-4583-98BB-8766F7C34BB6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9D6CFF7D-E252-4EAB-BF93-2D96B29C080A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D6CFF7D-E252-4EAB-BF93-2D96B29C080A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D6CFF7D-E252-4EAB-BF93-2D96B29C080A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D6CFF7D-E252-4EAB-BF93-2D96B29C080A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{706A14C6-AF55-439A-A453-28601E0334E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{706A14C6-AF55-439A-A453-28601E0334E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{706A14C6-AF55-439A-A453-28601E0334E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{706A14C6-AF55-439A-A453-28601E0334E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6556C41-A6A2-4583-98BB-8766F7C34BB6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6556C41-A6A2-4583-98BB-8766F7C34BB6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6556C41-A6A2-4583-98BB-8766F7C34BB6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6556C41-A6A2-4583-98BB-8766F7C34BB6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

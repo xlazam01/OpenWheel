@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>OpenWheel.Core</AssemblyName>
+    <RootNamespace>OpenWheel.Core</RootNamespace>
+    <Platforms>AnyCPU</Platforms>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+    <Description>Transport, protocol and device logic for the OpenWheel filter wheel (no ASCOM dependency)</Description>
+  </PropertyGroup>
+</Project>
