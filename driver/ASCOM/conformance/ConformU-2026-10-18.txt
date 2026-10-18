@@ -1,0 +1,130 @@
+ConformU 4.5.2 conformance run, driver ASCOM.OpenWheel.FilterWheel 0.1, firmware FW1.0.1, 2026-10-18
+Command: conformu conformance ASCOM.OpenWheel.FilterWheel
+Result: no errors, warnings or issues; all members within target response times.
+
+
+12:21:35.982 ASCOM Universal Device Conformance Checker Version 4.5.2.56139, Build time: so 17 října 2026 12:11:34          
+12:21:35.985                                              
+12:21:35.986 Operating system is Windows 11 (26H2), Processor is Intel/AMD 64bit, Application is 64bit.          
+12:21:35.986                                              
+12:21:35.987 COM Driver                          INFO     Checking ProgID: ASCOM.OpenWheel.FilterWheel
+12:21:35.988 COM Driver                          OK       This driver is compatible with the currently running 64-bit Conform Universal application.
+12:21:36.004                                              
+12:21:36.005 CreateDevice                        INFO     Creating NATIVE COM device: ASCOM.OpenWheel.FilterWheel
+12:21:36.135 CreateDevice                        INFO     Successfully created driver
+12:21:37.200 CreateDevice                        OK       Found a valid interface version: 3
+12:21:37.200 CreateDevice                        OK       Driver instance created successfully
+12:21:37.200                                              
+12:21:37.200 Connect to device                            
+12:21:37.289 Connected                           OK       Connected to device successfully using Connected = True
+12:21:37.796 Connected                           OK       Disconnected from device successfully using Connected = False
+12:21:38.309 Connect                             OK       Connected to device successfully using Connect()
+12:21:38.309                                              
+12:21:38.313 Common Driver Methods                        
+12:21:38.314 InterfaceVersion                    OK       3
+12:21:38.314 Connected                           OK       True
+12:21:38.318 Description                         OK       OpenWheel motorised filter wheel (USB)
+12:21:38.320 DriverInfo                          OK       OpenWheel ASCOM driver 0.1. Open source, https://github.com/xlazam01/OpenWheel
+12:21:38.322 DriverVersion                       OK       0.1
+12:21:38.324 Name                                OK       OpenWheel (FW1.0.1)
+12:21:38.324                                              
+12:21:38.354 SupportedActions                    OK       Found action: Status
+12:21:38.355 SupportedActions                    OK       Found action: Home
+12:21:38.355 SupportedActions                    OK       Found action: Halt
+12:21:38.355 SupportedActions                    OK       Found action: Calibrate
+12:21:38.355 SupportedActions                    OK       Found action: ClearError
+12:21:38.355                                              
+12:21:38.355 Action                              INFO     Conform cannot test the Action method
+12:21:38.355                                              
+12:21:38.370 DeviceState                         OK       Received 2 operational state properties.
+12:21:38.370 DeviceState                         OK         Position = 0
+12:21:38.370 DeviceState                         OK         TimeStamp = 18.10.2026 10:21:38
+12:21:38.373 DeviceState                         OK       Found all expected operational properties
+12:21:38.373                                              
+12:21:38.373 Pre-run Checks                               
+12:21:39.898 Pre-run Check                       OK       Filter wheel is stationary, ready to start tests
+12:21:39.898                                              
+12:21:39.898 Properties                                   
+12:21:39.903 FocusOffsets Get                    OK       Found 4 filter offset values
+12:21:39.903 FocusOffsets Get                    INFO     Filter 0 Offset: 0
+12:21:39.903 FocusOffsets Get                    INFO     Filter 1 Offset: 0
+12:21:39.903 FocusOffsets Get                    INFO     Filter 2 Offset: 0
+12:21:39.903 FocusOffsets Get                    INFO     Filter 3 Offset: 0
+12:21:39.907 Names Get                           OK       Found 4 filter names
+12:21:39.907 Names Get                           INFO     Filter 0 Name: Filter 1
+12:21:39.907 Names Get                           INFO     Filter 1 Name: Filter 2
+12:21:39.907 Names Get                           INFO     Filter 2 Name: Filter 3
+12:21:39.907 Names Get                           INFO     Filter 3 Name: Filter 4
+12:21:39.907 Names Get                           OK       Number of filter offsets and number of names are the same: 4
+12:21:39.907 Position Get                        OK       Currently at position: 0
+12:21:39.907                                              
+12:21:39.907 Testing ascending sequential movement          
+12:21:39.926 Position Set 0                      OK       Reached position: 0 in: 0,0 seconds
+12:21:43.003 Position Set 1                      OK       Reached position: 1 in: 2,1 seconds
+12:21:46.045 Position Set 2                      OK       Reached position: 2 in: 2,0 seconds
+12:21:49.088 Position Set 3                      OK       Reached position: 3 in: 2,0 seconds
+12:21:50.097                                              
+12:21:50.097 Testing descending sequential movement          
+12:21:50.114 Position Set 3                      OK       Reached position: 3 in: 0,0 seconds
+12:21:55.769 Position Set 2                      OK       Reached position: 2 in: 4,6 seconds
+12:22:01.440 Position Set 1                      OK       Reached position: 1 in: 4,7 seconds
+12:22:07.180 Position Set 0                      OK       Reached position: 0 in: 4,7 seconds
+12:22:08.186                                              
+12:22:08.186 Testing potentially long distance moves          
+12:22:08.203 Position Set 0                      OK       Reached position: 0 in: 0,0 seconds
+12:22:13.956 Position Set 3                      OK       Reached position: 3 in: 4,7 seconds
+12:22:19.614 Position Set 2                      OK       Reached position: 2 in: 4,6 seconds
+12:22:23.984 Position Set 0                      OK       Reached position: 0 in: 3,4 seconds
+12:22:27.050 Position Set 1                      OK       Reached position: 1 in: 2,1 seconds
+12:22:32.695 Position Set 0                      OK       Reached position: 0 in: 4,6 seconds
+12:22:33.702                                              
+12:22:33.702 Testing error conditions                     
+12:22:33.711 Position Set                        OK       Correctly rejected bad position: -1
+12:22:33.712 Position Set                        OK       Correctly rejected bad position: 4
+12:22:33.712                                              
+12:22:33.712 Directionality assessment                    
+12:22:33.712 Directionality                      INFO     The filter wheel is uni-directional.
+12:22:33.712                                              
+12:22:33.712 Disconnect from device                       
+12:22:33.715 Disconnect                          OK       Disconnected from device successfully using Disconnect()
+12:22:33.715                                              
+12:22:33.715 Conformance test has finished                
+12:22:33.715                                              
+12:22:33.715 Congratulations, no errors, warnings or issues found: your driver passes ASCOM validation!!          
+
+12:22:33.716 Timing Summary                               See Help for further information.
+12:22:33.716 Timing Summary                               FAST target response time: 0,1 seconds, (configuration and state reporting members).
+12:22:33.716 Timing Summary                               STANDARD target response time: 1,0 second, (property write and asynchronous initiators).
+12:22:33.716 Timing Summary                               EXTENDED target response time: 600,0 seconds, (synchronous methods, ImageArray and ImageArrayVariant).
+12:22:33.716 Timing Summary                               Conform is configured to report both good and bad timing outcomes.
+12:22:33.716                                              
+12:22:33.716 Connect                                      At 12:21:37.805 Connect                  0,008 seconds. ✓ (STANDARD)
+12:22:33.716 InterfaceVersion                             At 12:21:38.314 InterfaceVersion         0,000 seconds. ✓ (FAST)
+12:22:33.716 Connected                                    At 12:21:38.314 Connected                0,000 seconds. ✓ (FAST)
+12:22:33.716 Description                                  At 12:21:38.318 Description              0,003 seconds. ✓ (FAST)
+12:22:33.716 DriverInfo                                   At 12:21:38.320 DriverInfo               0,002 seconds. ✓ (FAST)
+12:22:33.716 DriverVersion                                At 12:21:38.322 DriverVersion            0,002 seconds. ✓ (FAST)
+12:22:33.726 Name                                         At 12:21:38.324 Name                     0,002 seconds. ✓ (FAST)
+12:22:33.734 SupportedActions                             At 12:21:38.354 SupportedActions         0,030 seconds. ✓ (FAST)
+12:22:33.734 DeviceState                                  At 12:21:38.370 DeviceState              0,016 seconds. ✓ (FAST)
+12:22:33.734 FocusOffsets                                 At 12:21:39.903 FocusOffsets             0,004 seconds. ✓ (FAST)
+12:22:33.734 Names                                        At 12:21:39.907 Names                    0,003 seconds. ✓ (FAST)
+12:22:33.734 Position                                     At 12:21:39.907 Position                 0,000 seconds. ✓ (FAST)
+12:22:33.735 Move to position 0                           At 12:21:39.925 Move to position 0       0,017 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 1                           At 12:21:40.988 Move to position 1       0,047 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 2                           At 12:21:44.043 Move to position 2       0,031 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 3                           At 12:21:47.082 Move to position 3       0,031 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 3                           At 12:21:50.113 Move to position 3       0,016 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 2                           At 12:21:51.155 Move to position 2       0,032 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 1                           At 12:21:56.824 Move to position 1       0,047 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 0                           At 12:22:02.476 Move to position 0       0,031 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 0                           At 12:22:08.202 Move to position 0       0,016 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 3                           At 12:22:09.239 Move to position 3       0,031 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 2                           At 12:22:15.001 Move to position 2       0,031 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 0                           At 12:22:20.669 Move to position 0       0,047 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 1                           At 12:22:25.039 Move to position 1       0,048 seconds. ✓ (STANDARD)
+12:22:33.735 Move to position 0                           At 12:22:28.086 Move to position 0       0,031 seconds. ✓ (STANDARD)
+12:22:33.735 Disconnect                                   At 12:22:33.714 Disconnect               0,002 seconds. ✓ (STANDARD)
+12:22:33.735                                              
+12:22:33.735 Congratulations, all members returned within their target response times!!          
+
