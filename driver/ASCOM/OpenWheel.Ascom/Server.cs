@@ -101,6 +101,7 @@ namespace OpenWheel.Ascom
         private static int Main(string[] args)
         {
             string arg = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            bool silent = args.Length > 1 && args[1].ToLowerInvariant() == "/silent";   // used by the installer: no message boxes
             try
             {
                 switch (arg)
@@ -113,13 +114,13 @@ namespace OpenWheel.Ascom
                     case "-regserver":
                     case "/register":
                     case "-register":
-                        return Elevated(arg, () => { Register(); return 0; }, "registered");
+                        return Elevated(arg, silent, () => { Register(); return 0; }, "registered");
 
                     case "/unregserver":
                     case "-unregserver":
                     case "/unregister":
                     case "-unregister":
-                        return Elevated(arg, () => { Unregister(); return 0; }, "unregistered");
+                        return Elevated(arg, silent, () => { Unregister(); return 0; }, "unregistered");
 
                     case "":
                     case "/setup":
@@ -205,15 +206,15 @@ namespace OpenWheel.Ascom
         }
 
         /// <summary>Runs the action as administrator, asking for elevation (UAC) if necessary.</summary>
-        private static int Elevated(string arg, Func<int> action, string doneWord)
+        private static int Elevated(string arg, bool silent, Func<int> action, string doneWord)
         {
             if (IsAdministrator())
             {
                 int rc = action();
-                if (rc == 0) Message(Description + " driver " + doneWord + ".");
+                if (rc == 0 && !silent) Message(Description + " driver " + doneWord + ".");
                 return rc;
             }
-            var psi = new ProcessStartInfo(Application.ExecutablePath, arg) { UseShellExecute = true, Verb = "runas" };
+            var psi = new ProcessStartInfo(Application.ExecutablePath, silent ? arg + " /silent" : arg) { UseShellExecute = true, Verb = "runas" };
             try
             {
                 using (Process p = Process.Start(psi))
@@ -224,7 +225,7 @@ namespace OpenWheel.Ascom
             }
             catch (System.ComponentModel.Win32Exception)
             {
-                Message("Administrator rights are required and were not granted.");
+                if (!silent) Message("Administrator rights are required and were not granted.");
                 return 5;
             }
         }

@@ -38,3 +38,4 @@ obj/
 
 # staged driver build (registered with COM during development)
 driver/ASCOM/dist/
+driver/ASCOM/installer/Output/

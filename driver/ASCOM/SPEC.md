@@ -1,6 +1,6 @@
 # OpenWheel ASCOM Driver — Specification (DRAFT v0.1)
 
-Status: firmware (section 2) done and verified on hardware. `OpenWheel.Core` (transport, protocol, detection, worker, watchdog) is implemented and tested against a simulated misbehaving device (48 tests) and the real wheel. The ASCOM layer (`OpenWheel.Ascom`: LocalServer + IFilterWheelV3 + setup dialog) is built and passes 24 direct checks against the real wheel (`OpenWheel.Ascom.Check`); registered on the dev PC, and ConformU 4.5.2 reports no errors, warnings or issues (`conformance/ConformU-2026-10-18.txt`). Next: NINA test, installer.
+Status: firmware (section 2) done and verified on hardware. `OpenWheel.Core` (transport, protocol, detection, worker, watchdog) is implemented and tested against a simulated misbehaving device (48 tests) and the real wheel. The ASCOM layer (`OpenWheel.Ascom`: LocalServer + IFilterWheelV3 + setup dialog) is built and passes 24 direct checks against the real wheel (`OpenWheel.Ascom.Check`); registered on the dev PC, and ConformU 4.5.2 reports no errors, warnings or issues (`conformance/ConformU-2026-10-18.txt`). Installer script `installer/OpenWheel.iss` (Inno Setup 6.7.3) compiles to a 2 MB Setup.exe; not yet run. Next: NINA test, run the installer on a clean state.
 Items marked **[OPEN]** need a decision before implementation.
 
 ## 1. Goals
