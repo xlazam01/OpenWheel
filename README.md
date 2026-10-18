@@ -50,6 +50,14 @@ Firmware protocol v2 (acknowledged commands, status and error codes) is implemen
 driver is specified in [driver/ASCOM/SPEC.md](driver/ASCOM/SPEC.md) and not built yet. The GUI and
 hardware tests still use the old unacknowledged protocol and need updating.
 
+## Acknowledgements
+
+Many thanks to the authors of the [myFilterWheel ASCOM DIY](https://sourceforge.net/projects/myfilterwheel-ascom-diy/)
+project (Robert Brown, Clive Stachon and contributors, MIT licence). The basic `:NN#` serial
+protocol of OpenWheel was inspired by theirs and then extended with new features: acknowledged
+replies, error codes, a status command and device identification for automatic detection.
+OpenWheel is an independent project and is not affiliated with myFilterWheel.
+
 ## Licences
 
 - Software and firmware: GPL-3.0-or-later, see [LICENSE](LICENSE).
