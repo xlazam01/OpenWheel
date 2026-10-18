@@ -35,11 +35,12 @@ static bool parsePair(const char* s, long& a, long& b) {
     return *s == '\0';
 }
 
-// Device serial number from the MCU unique ID (same mix the USB core uses for its serial string)
+// Device serial number from the MCU unique ID. Same value as the USB serial string descriptor
+// (stm32duino USB core: UID0+UID2 as 8 hex digits, then the TOP 16 bits of UID1).
 static void deviceSerial(char* out, size_t len) {
     uint32_t w0 = HAL_GetUIDw0() + HAL_GetUIDw2();
     uint32_t w1 = HAL_GetUIDw1();
-    snprintf(out, len, "%08lX%04lX", (unsigned long)w0, (unsigned long)(w1 & 0xFFFF));
+    snprintf(out, len, "%08lX%04lX", (unsigned long)w0, (unsigned long)(w1 >> 16));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
