@@ -18,7 +18,7 @@ extern "C" void CDC_enableDTR(bool enable);
 #endif
 
 
-FilterWheel myFilterWheel;
+FilterWheel openWheel;
 
 
 
@@ -27,12 +27,12 @@ void testCalibrationData() {
 
   // Test 1: Clear and save empty calibration
   DEBUG_PRINT("1. Clearing calibration data... ");
-  myFilterWheel.calibration.clear();
+  openWheel.calibration.clear();
   DEBUG_PRINTLN("OK");
 
   // Test 2: Check that cleared data is invalid
   DEBUG_PRINT("2. Verifying cleared data is invalid... ");
-  if (!myFilterWheel.calibration.isValid()) {
+  if (!openWheel.calibration.isValid()) {
     DEBUG_PRINTLN("OK");
   } else {
     DEBUG_PRINTLN("FAILED (should be invalid)");
@@ -40,28 +40,28 @@ void testCalibrationData() {
 
   // Test 3: Create sample calibration data
   DEBUG_PRINT("3. Creating sample calibration data... ");
-  myFilterWheel.calibration.setNumSlots(5);
-  myFilterWheel.calibration.setMaxSteps(MAXSTEPS);
+  openWheel.calibration.setNumSlots(5);
+  openWheel.calibration.setMaxSteps(MAXSTEPS);
 
   // Set pulse lengths (in steps) - home slot has shortest pulse
-  myFilterWheel.calibration.setPulseLength(0, 1200);  // Home slot
-  myFilterWheel.calibration.setPulseLength(1, 1500);
-  myFilterWheel.calibration.setPulseLength(2, 1800);
-  myFilterWheel.calibration.setPulseLength(3, 2100);
-  myFilterWheel.calibration.setPulseLength(4, 2400);
+  openWheel.calibration.setPulseLength(0, 1200);  // Home slot
+  openWheel.calibration.setPulseLength(1, 1500);
+  openWheel.calibration.setPulseLength(2, 1800);
+  openWheel.calibration.setPulseLength(3, 2100);
+  openWheel.calibration.setPulseLength(4, 2400);
 
   // Set offsets (in steps)
-  myFilterWheel.calibration.setOffset(0, -50);
-  myFilterWheel.calibration.setOffset(1, 30);
-  myFilterWheel.calibration.setOffset(2, -20);
-  myFilterWheel.calibration.setOffset(3, 10);
-  myFilterWheel.calibration.setOffset(4, 40);
+  openWheel.calibration.setOffset(0, -50);
+  openWheel.calibration.setOffset(1, 30);
+  openWheel.calibration.setOffset(2, -20);
+  openWheel.calibration.setOffset(3, 10);
+  openWheel.calibration.setOffset(4, 40);
   DEBUG_PRINTLN("OK");
 
   // Test 4: Save to EEPROM
   DEBUG_PRINT("4. Saving calibration to EEPROM... ");
   Serial.flush();  // Ensure output is sent before potentially hanging
-  if (myFilterWheel.calibration.save()) {
+  if (openWheel.calibration.save()) {
     DEBUG_PRINTLN("OK");
   } else {
     DEBUG_PRINTLN("FAILED");
@@ -70,12 +70,12 @@ void testCalibrationData() {
 
   // Test 5: Clear local data
   DEBUG_PRINT("5. Clearing local calibration data... ");
-  myFilterWheel.calibration.clear();
+  openWheel.calibration.clear();
   DEBUG_PRINTLN("OK");
 
   // Test 6: Load from EEPROM
   DEBUG_PRINT("6. Loading calibration from EEPROM... ");
-  if (myFilterWheel.calibration.load()) {
+  if (openWheel.calibration.load()) {
     DEBUG_PRINTLN("OK");
   } else {
     DEBUG_PRINTLN("FAILED");
@@ -84,7 +84,7 @@ void testCalibrationData() {
 
   // Test 7: Validate loaded data
   DEBUG_PRINT("7. Validating loaded data... ");
-  if (myFilterWheel.calibration.isValid()) {
+  if (openWheel.calibration.isValid()) {
     DEBUG_PRINTLN("OK");
   } else {
     DEBUG_PRINTLN("FAILED");
@@ -94,12 +94,12 @@ void testCalibrationData() {
   // Test 8: Verify data integrity
   DEBUG_PRINT("8. Verifying data integrity... ");
   bool dataOK = true;
-  if (myFilterWheel.calibration.getNumSlots() != 5) dataOK = false;
-  if (myFilterWheel.calibration.getMaxSteps() != MAXSTEPS) dataOK = false;
-  if (myFilterWheel.calibration.getPulseLength(0) != 1200) dataOK = false;
-  if (myFilterWheel.calibration.getPulseLength(4) != 2400) dataOK = false;
-  if (myFilterWheel.calibration.getOffset(0) != -50) dataOK = false;
-  if (myFilterWheel.calibration.getOffset(4) != 40) dataOK = false;
+  if (openWheel.calibration.getNumSlots() != 5) dataOK = false;
+  if (openWheel.calibration.getMaxSteps() != MAXSTEPS) dataOK = false;
+  if (openWheel.calibration.getPulseLength(0) != 1200) dataOK = false;
+  if (openWheel.calibration.getPulseLength(4) != 2400) dataOK = false;
+  if (openWheel.calibration.getOffset(0) != -50) dataOK = false;
+  if (openWheel.calibration.getOffset(4) != 40) dataOK = false;
 
   if (dataOK) {
     DEBUG_PRINTLN("OK");
@@ -110,7 +110,7 @@ void testCalibrationData() {
 
   // Test 9: Find home slot
   DEBUG_PRINT("9. Finding home slot... ");
-  uint8_t homeSlot = myFilterWheel.calibration.findHomeSlot();
+  uint8_t homeSlot = openWheel.calibration.findHomeSlot();
   if (homeSlot == 0) {
     DEBUG_PRINT("OK (slot ");
     DEBUG_PRINT(homeSlot);
@@ -123,7 +123,7 @@ void testCalibrationData() {
 
   // Test 10: Print calibration data
   DEBUG_PRINTLN("10. Printing calibration data:");
-  myFilterWheel.calibration.printCalibration();
+  openWheel.calibration.printCalibration();
 
   DEBUG_PRINTLN("=== Calibration Data Test Complete ===\n");
 }
@@ -158,12 +158,12 @@ Wire.setSDA(PIN_I2C_SDA);  // PA10
   Wire.begin();
 
   // Start FilterWheel module (initializes hardware, EEPROM, and calibration)
-  myFilterWheel.start();
+  openWheel.start();
 
   // Run calibration data test
   //testCalibrationData();
 }
 
 void loop() {
-  myFilterWheel.loop();
+  openWheel.loop();
 }

@@ -2,7 +2,7 @@
 #include "filterwheel.h"
 #include "stepper_timer.h"
 
-#include "protocol_myfw.h"
+#include "protocol_openwheel.h"
 
 // Timeouts
 static const unsigned long MOVE_TIMEOUT_MS       = 30000;
@@ -130,8 +130,8 @@ void FilterWheel::start() {
     }
 
     // Initialize protocol handler
-    protocol = new ProtocolMyFW(this);
-    DEBUG_PRINTLN("Protocol: myFilterWheel");
+    protocol = new ProtocolOpenWheel(this);
+    DEBUG_PRINTLN("Protocol: OpenWheel");
 
     state = STATE_INIT;
     stateStartTime = millis();

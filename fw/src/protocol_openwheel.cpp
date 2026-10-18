@@ -1,5 +1,5 @@
-// myFilterWheel Protocol Implementation, version 2 (every command is acknowledged)
-#include "protocol_myfw.h"
+// OpenWheel Protocol Implementation, version 2 (every command is acknowledged)
+#include "protocol_openwheel.h"
 #include "filterwheel.h"
 
 // protoWrite() sends a complete response as one atomic write.
@@ -45,12 +45,12 @@ static void deviceSerial(char* out, size_t len) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-ProtocolMyFW::ProtocolMyFW(FilterWheel* fw)
+ProtocolOpenWheel::ProtocolOpenWheel(FilterWheel* fw)
     : filterWheel(fw), bufferIndex(0), inCommand(false), overflow(false) {
     memset(cmdBuffer, 0, sizeof(cmdBuffer));
 }
 
-void ProtocolMyFW::process() {
+void ProtocolOpenWheel::process() {
     while (PROTOCOL_SERIAL.available() > 0) {
         char inChar = PROTOCOL_SERIAL.read();
 
@@ -81,7 +81,7 @@ void ProtocolMyFW::process() {
     }
 }
 
-void ProtocolMyFW::handleCommand() {
+void ProtocolOpenWheel::handleCommand() {
     if (bufferIndex < 2 || !isDigit(cmdBuffer[0]) || !isDigit(cmdBuffer[1])) {
         sendError(FW_ERR_BAD_FORMAT);
         return;
@@ -315,29 +315,29 @@ void ProtocolMyFW::handleCommand() {
     }
 }
 
-void ProtocolMyFW::sendResponse(const char* msg) {
+void ProtocolOpenWheel::sendResponse(const char* msg) {
     char buf[64];
     int len = snprintf(buf, sizeof(buf), "%s#", msg);
     protoWrite((const uint8_t*)buf, (size_t)len);
 }
 
-void ProtocolMyFW::sendResponse(int value) {
+void ProtocolOpenWheel::sendResponse(int value) {
     char buf[20];
     int len = snprintf(buf, sizeof(buf), "%d#", value);
     protoWrite((const uint8_t*)buf, (size_t)len);
 }
 
-void ProtocolMyFW::sendOk() {
+void ProtocolOpenWheel::sendOk() {
     sendResponse("OK");
 }
 
-void ProtocolMyFW::sendError(FwError code) {
+void ProtocolOpenWheel::sendError(FwError code) {
     char buf[20];
     int len = snprintf(buf, sizeof(buf), "ERR,%d#", (int)code);
     protoWrite((const uint8_t*)buf, (size_t)len);
 }
 
-void ProtocolMyFW::sendResult(FwError code) {
+void ProtocolOpenWheel::sendResult(FwError code) {
     if (code == FW_OK) {
         sendOk();
     } else {

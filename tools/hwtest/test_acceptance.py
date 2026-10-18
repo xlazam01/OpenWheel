@@ -8,7 +8,7 @@ import pytest
 
 def test_1_identity(fw):
     assert fw.raw(":25#") == "OK#"
-    assert fw.get(19) == "myFilterWheel"
+    assert fw.get(19) == "OpenWheel"
     assert re.fullmatch(r"FW\d+\.\d+\.\d+", fw.get(18)), fw.get(18)
     assert 1 <= fw.slots <= 16
 

@@ -4,7 +4,7 @@
 #include <Arduino.h>
 
 // Firmware information
-#define FIRMWARE_NAME    "myFilterWheel"
+#define FIRMWARE_NAME    "OpenWheel"
 #define FIRMWARE_VERSION "FW1.0.1"
 
 // USB CDC Serial Configuration
@@ -33,7 +33,7 @@
   #define DEBUG_PRINTF(...)
 #endif
 
-// Serial protocol: myFilterWheel (":NN[params]#"), version 2 = every command is acknowledged
+// Serial protocol: OpenWheel (":NN[params]#"), version 2 = every command is acknowledged
 #define PROTOCOL_VERSION 2
 #define DEVICE_MODEL     "G0B1"
 

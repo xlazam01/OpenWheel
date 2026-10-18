@@ -1,4 +1,4 @@
-"""Hardware-in-the-loop test setup for the myFilterWheel firmware (USB CDC, protocol ':NN<params>#')."""
+"""Hardware-in-the-loop test setup for the OpenWheel firmware (USB CDC, protocol ':NN<params>#')."""
 import time
 from datetime import datetime
 from pathlib import Path

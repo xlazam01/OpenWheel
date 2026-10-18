@@ -1,6 +1,6 @@
 """
 FilterWheel Serial Communication Module
-Handles serial communication with the filter wheel using myFilterWheel protocol
+Handles serial communication with the filter wheel using the OpenWheel protocol
 """
 
 import serial

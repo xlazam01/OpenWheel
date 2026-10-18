@@ -1,4 +1,4 @@
-// myFilterWheel Protocol Handler, version 2
+// OpenWheel Protocol Handler, version 2
 // Line protocol: ":NN[params]#". Every command is answered:
 //   queries      -> "<value>#"
 //   set/actions  -> "OK#"
@@ -14,9 +14,9 @@
 // Forward declaration
 class FilterWheel;
 
-class ProtocolMyFW {
+class ProtocolOpenWheel {
 public:
-    explicit ProtocolMyFW(FilterWheel* fw);
+    explicit ProtocolOpenWheel(FilterWheel* fw);
 
     // Process incoming serial data
     void process();

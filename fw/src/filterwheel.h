@@ -12,7 +12,7 @@
 
 #include "error_codes.h"
 
-class ProtocolMyFW;
+class ProtocolOpenWheel;
 
 // State machine states
 enum FilterWheelState {
@@ -115,8 +115,8 @@ private:
   bool buttonPressedDuringBoot;
 
   // Protocol handler
-  ProtocolMyFW* protocol;
+  ProtocolOpenWheel* protocol;
 
   // Allow protocol handler to access private members
-  friend class ProtocolMyFW;
+  friend class ProtocolOpenWheel;
 };

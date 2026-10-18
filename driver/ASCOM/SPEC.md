@@ -5,7 +5,7 @@ Items marked **[OPEN]** need a decision before implementation.
 
 ## 1. Goals
 
-1. ASCOM `FilterWheel` driver for the OpenWheel (myFilterWheel protocol) usable from NINA, APT, SGP, etc.
+1. ASCOM `FilterWheel` driver for the OpenWheel (`:NN#` protocol, inherited from the myFilterWheel project) usable from NINA, APT, SGP, etc.
 2. **Auto-detection** of the wheel over USB: no manual COM port selection for a normal user.
 3. Expose richer state than plain ASCOM: moving, homing, calibrating, error code.
 4. **Never hang** the client application, regardless of what the device (or a wrong device) answers.
