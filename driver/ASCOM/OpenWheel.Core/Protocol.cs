@@ -30,13 +30,14 @@ namespace OpenWheel.Core
         NotCalibrated = 9,
         UnknownCommand = 10,
         BadFormat = 11,
-        NotSupported = 12
+        NotSupported = 12,
+        MotorStall = 13
     }
 
     public static class WheelErrors
     {
-        /// <summary>True for sticky device faults (codes 1..6), false for command rejections.</summary>
-        public static bool IsFault(int code) { return code >= 1 && code <= 6; }
+        /// <summary>True for sticky device faults (codes 1..6 and 13), false for command rejections.</summary>
+        public static bool IsFault(int code) { return (code >= 1 && code <= 6) || code == 13; }
 
         public static string Describe(int code)
         {
@@ -55,6 +56,7 @@ namespace OpenWheel.Core
                 case 10: return "unknown command (firmware too old?)";
                 case 11: return "malformed command";
                 case 12: return "setting cannot be changed at runtime";
+                case 13: return "motor stalled (wheel blocked or jammed)";
                 default: return "unknown error code " + code.ToString(CultureInfo.InvariantCulture);
             }
         }
@@ -111,6 +113,8 @@ namespace OpenWheel.Core
         public bool PositionKnown { get { return (Flags & 2) != 0; } }
         public bool ButtonHeldAtBoot { get { return (Flags & 4) != 0; } }
         public bool EepromFault { get { return (Flags & 8) != 0; } }
+        /// <summary>A housekeeping warning is present; details via :40# (<see cref="WheelHousekeeping"/>).</summary>
+        public bool HasWarning { get { return (Flags & 16) != 0; } }
         public bool Busy { get { return State == WheelState.Moving || State == WheelState.Homing || State == WheelState.Calibrating || State == WheelState.Init; } }
 
         /// <summary>Parses "S,state,slot,target,slots,error,flags" (without the trailing '#').</summary>
@@ -145,6 +149,118 @@ namespace OpenWheel.Core
         {
             return "state=" + State + " slot=" + Slot + " target=" + Target + " slots=" + Slots +
                    " error=" + Error + " flags=" + Flags;
+        }
+    }
+
+    /// <summary>Housekeeping warning bits of :40# (same as FilterWheel::WARN_* in the firmware).</summary>
+    [Flags]
+    public enum WheelWarnings
+    {
+        None = 0,
+        SupplyLow = 1,
+        DriverOvertemperature = 2,
+        DriverReset = 4,
+        NoCrystal = 8
+    }
+
+    /// <summary>Result of :40# (housekeeping, firmware 1.1 and newer).</summary>
+    public sealed class WheelHousekeeping
+    {
+        /// <summary>MCU die temperature in degrees C (reads a few degrees above ambient).</summary>
+        public double McuTemperature { get; private set; }
+        /// <summary>MCU supply in volts.</summary>
+        public double Vdda { get; private set; }
+        /// <summary>+5V rail in volts, null on boards without the sense divider.</summary>
+        public double? Supply5V { get; private set; }
+        /// <summary>Lowest +5V since the last move started, null if not available.</summary>
+        public double? Supply5VMin { get; private set; }
+        /// <summary>TMC2209 temperature class: 0 below 120 C, else 120/143/150/157; null if the driver does not answer.</summary>
+        public int? DriverTemperatureClass { get; private set; }
+        public WheelWarnings Warnings { get; private set; }
+
+        /// <summary>Parses "H,mcuTemp(0.1C),vdda(mV),v5(mV),v5min(mV),driverTemp,warnings" (without the '#').</summary>
+        public static bool TryParse(string value, out WheelHousekeeping hk)
+        {
+            hk = null;
+            if (string.IsNullOrEmpty(value)) return false;
+            string[] p = value.Split(',');
+            if (p.Length != 7 || p[0] != "H") return false;
+            int[] n = new int[6];
+            for (int i = 0; i < 6; i++)
+            {
+                if (!int.TryParse(p[i + 1], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out n[i])) return false;
+            }
+            if (n[0] < -600 || n[0] > 1500 || n[1] < 0 || n[1] > 4000 || n[5] < 0 || n[5] > 255) return false;
+            hk = new WheelHousekeeping
+            {
+                McuTemperature = n[0] / 10.0,
+                Vdda = n[1] / 1000.0,
+                Supply5V = n[2] < 0 ? (double?)null : n[2] / 1000.0,
+                Supply5VMin = n[3] < 0 ? (double?)null : n[3] / 1000.0,
+                DriverTemperatureClass = n[4] < 0 ? (int?)null : n[4],
+                Warnings = (WheelWarnings)n[5]
+            };
+            return true;
+        }
+
+        public static string Describe(WheelWarnings w)
+        {
+            if (w == WheelWarnings.None) return "none";
+            var parts = new System.Collections.Generic.List<string>();
+            if ((w & WheelWarnings.SupplyLow) != 0) parts.Add("+5V supply below 4.75 V (weak USB port, hub or cable)");
+            if ((w & WheelWarnings.DriverOvertemperature) != 0) parts.Add("motor driver overtemperature prewarning");
+            if ((w & WheelWarnings.DriverReset) != 0) parts.Add("motor driver was reset by a supply dip and re-initialised");
+            if ((w & WheelWarnings.NoCrystal) != 0) parts.Add("crystal not running, clocks from the internal oscillator");
+            return string.Join("; ", parts.ToArray());
+        }
+
+        public override string ToString()
+        {
+            return "mcu=" + McuTemperature.ToString("0.0", CultureInfo.InvariantCulture) + "C vdda=" +
+                   Vdda.ToString("0.000", CultureInfo.InvariantCulture) + "V warnings=" + Warnings;
+        }
+    }
+
+    /// <summary>Result of :41# (StallGuard threshold and the SG_RESULT readings of the last :21 step move).</summary>
+    public sealed class StallGuardInfo
+    {
+        /// <summary>SGTHRS, 0 = stall detection off.</summary>
+        public int Threshold { get; private set; }
+        /// <summary>Readings of the last step move, null if none (no step move since boot).</summary>
+        public int? Last { get; private set; }
+        public int? Min { get; private set; }
+        public int? Max { get; private set; }
+
+        /// <summary>Parses "G,threshold,last,min,max" (without the '#').</summary>
+        public static bool TryParse(string value, out StallGuardInfo info)
+        {
+            info = null;
+            if (string.IsNullOrEmpty(value)) return false;
+            string[] p = value.Split(',');
+            if (p.Length != 5 || p[0] != "G") return false;
+            int[] n = new int[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (!int.TryParse(p[i + 1], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out n[i])) return false;
+            }
+            if (n[0] < 0 || n[0] > 255) return false;
+            info = new StallGuardInfo
+            {
+                Threshold = n[0],
+                Last = n[1] < 0 ? (int?)null : n[1],
+                Min = n[2] < 0 ? (int?)null : n[2],
+                Max = n[3] < 0 ? (int?)null : n[3]
+            };
+            return true;
+        }
+
+        /// <summary>
+        /// Suggested threshold from the lowest reading of normal moves: the firmware flags a stall at
+        /// SG_RESULT &lt;= 2 x threshold, so a third of the minimum leaves a margin of 1.5. Null without data.
+        /// </summary>
+        public int? SuggestedThreshold
+        {
+            get { return Min.HasValue && Min.Value > 0 ? (int?)Math.Max(1, Math.Min(255, Min.Value / 3)) : null; }
         }
     }
 
@@ -304,6 +420,23 @@ namespace OpenWheel.Core
         public static string MoveSteps(int steps)
         {
             return ":21 " + steps.ToString(CultureInfo.InvariantCulture) + "#";
+        }
+
+        public const string Housekeeping = ":40#";
+        public const string GetStallGuard = ":41#";
+
+        public static string SetStallThreshold(int threshold)
+        {
+            if (threshold < 0 || threshold > 255) throw new ArgumentOutOfRangeException("threshold");
+            return ":42 " + threshold.ToString(CultureInfo.InvariantCulture) + "#";
+        }
+
+        public const string GetLedBrightness = ":43#";
+
+        public static string SetLedBrightness(int percent)
+        {
+            if (percent < 0 || percent > 100) throw new ArgumentOutOfRangeException("percent");
+            return ":44 " + percent.ToString(CultureInfo.InvariantCulture) + "#";
         }
     }
 }

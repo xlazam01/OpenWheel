@@ -1,10 +1,10 @@
 ; Inno Setup script for the OpenWheel ASCOM driver.
-; Build:  ISCC.exe OpenWheel.iss  [/DAppVersion=0.1.0]   (after: dotnet build ..\OpenWheel.Ascom -c Release)
+; Build:  ISCC.exe OpenWheel.iss  [/DAppVersion=0.3.0]   (after: dotnet build ..\OpenWheel.Ascom -c Release)
 ; The installer needs administrator rights (it registers a COM server for all users).
 
 #define AppName "OpenWheel ASCOM Driver"
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.3.0"
 #endif
 #define ServerExe "OpenWheel.Ascom.Server.exe"
 #define BuildDir "..\OpenWheel.Ascom\bin\Release\net48"

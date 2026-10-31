@@ -49,6 +49,13 @@ namespace OpenWheel.Core.Tests
         public string[] FilterNames = { "", "", "", "" };
         public int[] FocusOffsets = { 0, 0, 0, 0 };
         public bool DropReplyToMove;           // executes :07 but does not answer it
+        public bool NoHousekeeping;            // firmware older than 1.1: ERR,10 to commands 40..42
+        public int Warnings;                   // :40# warning bits; also sets STATUS flag bit4
+        public string HousekeepingLine = "H,351,3285,-1,-1,0,{0}";
+        public int StallThreshold;
+        public string StallReadings = "-1,-1,-1";
+        public bool NoLedBrightness;           // firmware 1.1: ERR,10 to commands 43/44
+        public int LedBrightness = 100;
         public Misbehavior Mode = Misbehavior.None;
         public int ReplyDelayMs = 0;
 
@@ -148,7 +155,7 @@ namespace OpenWheel.Core.Tests
         {
             Settle();
             int state = moving ? 2 : 1;
-            int flags = 1 | (PositionKnown ? 2 : 0);
+            int flags = 1 | (PositionKnown ? 2 : 0) | (Warnings != 0 && !NoHousekeeping ? 16 : 0);
             return string.Format("S,{0},{1},{2},{3},{4},{5}", state, moving ? -1 : Slot, moving ? target : -1, Slots, ErrorCode, flags);
         }
 
@@ -185,6 +192,33 @@ namespace OpenWheel.Core.Tests
                 int off;
                 if (!int.TryParse(rest, out off)) { Reply("ERR,7"); return; }
                 FocusOffsets[slot] = off; Reply("OK"); return;
+            }
+            if (body == "40" || body == "41" || body.StartsWith("42", StringComparison.Ordinal))
+            {
+                if (NoHousekeeping) { Reply("ERR,10"); return; }
+                if (body == "40") { Reply(string.Format(HousekeepingLine, Warnings)); return; }
+                if (body == "41") { Reply("G," + StallThreshold + "," + StallReadings); return; }
+                int thr;
+                if (!int.TryParse(body.Substring(2).Trim(' ', ','), out thr) || thr < 0 || thr > 255) { Reply("ERR,7"); return; }
+                if (moving) { Reply("ERR,8"); return; }
+                StallThreshold = thr; Reply("OK"); return;
+            }
+            if (body == "43" || body.StartsWith("44", StringComparison.Ordinal))
+            {
+                if (NoHousekeeping || NoLedBrightness) { Reply("ERR,10"); return; }
+                if (body == "43") { Reply(LedBrightness.ToString()); return; }
+                int pct;
+                if (!int.TryParse(body.Substring(2).Trim(' ', ','), out pct) || pct < 0 || pct > 100) { Reply("ERR,7"); return; }
+                if (moving) { Reply("ERR,8"); return; }
+                LedBrightness = pct; Reply("OK"); return;
+            }
+            if (body.StartsWith("21", StringComparison.Ordinal))
+            {
+                int steps;
+                if (!int.TryParse(body.Substring(2).Trim(' ', ','), out steps)) { Reply("ERR,7"); return; }
+                if (moving) { Reply("ERR,8"); return; }
+                moving = true; target = -1; moveEndMs = clock.ElapsedMilliseconds + MoveMs; PositionKnown = false;
+                Reply("OK"); return;
             }
             if (body.StartsWith("07", StringComparison.Ordinal))
             {

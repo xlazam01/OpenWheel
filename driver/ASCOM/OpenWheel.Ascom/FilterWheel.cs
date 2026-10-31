@@ -271,6 +271,15 @@ namespace OpenWheel.Ascom
             AppendBool(sb, "positionKnown", st != null && st.PositionKnown);
             AppendNum(sb, "error", s.DeviceError);
             AppendStr(sb, "errorText", s.DeviceError == 0 ? null : WheelErrors.Describe(s.DeviceError));
+            // health (firmware 1.1+, null otherwise)
+            WheelHousekeeping h = s.Housekeeping;
+            AppendDouble(sb, "mcuTemperature", h == null ? (double?)null : h.McuTemperature);
+            AppendDouble(sb, "driverTemperatureAbove", h == null || h.DriverTemperatureClass == null ? (double?)null : h.DriverTemperatureClass.Value);
+            AppendDouble(sb, "vdda", h == null ? (double?)null : h.Vdda);
+            AppendDouble(sb, "supply5V", h == null ? null : h.Supply5V);
+            AppendDouble(sb, "supply5VMin", h == null ? null : h.Supply5VMin);
+            AppendDouble(sb, "warnings", h == null ? (double?)null : (int)h.Warnings);
+            AppendStr(sb, "warningsText", h == null || h.Warnings == WheelWarnings.None ? null : WheelHousekeeping.Describe(h.Warnings));
             AppendStr(sb, "problem", s.Problem, true);
             sb.Append('}');
             return sb.ToString();
@@ -297,6 +306,12 @@ namespace OpenWheel.Ascom
         private static void AppendNum(StringBuilder sb, string key, int value)
         {
             sb.Append('"').Append(key).Append("\":").Append(value.ToString(CultureInfo.InvariantCulture)).Append(',');
+        }
+
+        private static void AppendDouble(StringBuilder sb, string key, double? value)
+        {
+            sb.Append('"').Append(key).Append("\":")
+              .Append(value.HasValue ? value.Value.ToString("0.###", CultureInfo.InvariantCulture) : "null").Append(',');
         }
 
         private static void AppendBool(StringBuilder sb, string key, bool value)

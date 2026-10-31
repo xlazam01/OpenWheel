@@ -96,6 +96,49 @@ namespace OpenWheel.Core.Tests
         {
             Assert.True(Commands.MoveToSlot(8).Length - 2 <= Commands.MaxCommandBody);
             Assert.Throws<ArgumentOutOfRangeException>(() => Commands.MoveToSlot(-1));
+            Assert.Equal(":42 30#", Commands.SetStallThreshold(30));
+            Assert.Throws<ArgumentOutOfRangeException>(() => Commands.SetStallThreshold(256));
+        }
+
+        [Fact]
+        public void HousekeepingParses()
+        {
+            WheelHousekeeping h;
+            Assert.True(WheelHousekeeping.TryParse("H,351,3285,-1,-1,0,0", out h));
+            Assert.Equal(35.1, h.McuTemperature, 3);
+            Assert.Equal(3.285, h.Vdda, 3);
+            Assert.Null(h.Supply5V);
+            Assert.Null(h.Supply5VMin);
+            Assert.Equal(0, h.DriverTemperatureClass);
+            Assert.Equal(WheelWarnings.None, h.Warnings);
+
+            Assert.True(WheelHousekeeping.TryParse("H,-52,3300,5040,4610,-1,9", out h));
+            Assert.Equal(-5.2, h.McuTemperature, 3);
+            Assert.Equal(5.04, h.Supply5V.Value, 3);
+            Assert.Equal(4.61, h.Supply5VMin.Value, 3);
+            Assert.Null(h.DriverTemperatureClass);
+            Assert.Equal(WheelWarnings.SupplyLow | WheelWarnings.NoCrystal, h.Warnings);
+            Assert.Contains("crystal", WheelHousekeeping.Describe(h.Warnings));
+
+            Assert.False(WheelHousekeeping.TryParse("H,351,3285,-1,-1,0", out h));   // too few fields
+            Assert.False(WheelHousekeeping.TryParse("G,351,3285,-1,-1,0,0", out h));  // wrong tag
+            Assert.False(WheelHousekeeping.TryParse("H,351,x,-1,-1,0,0", out h));
+        }
+
+        [Fact]
+        public void StallGuardParsesAndSuggests()
+        {
+            StallGuardInfo g;
+            Assert.True(StallGuardInfo.TryParse("G,0,-1,-1,-1", out g));
+            Assert.Equal(0, g.Threshold);
+            Assert.Null(g.Min);
+            Assert.Null(g.SuggestedThreshold);
+            Assert.True(StallGuardInfo.TryParse("G,10,40,28,216", out g));
+            Assert.Equal(28, g.Min);
+            Assert.Equal(216, g.Max);
+            Assert.Equal(9, g.SuggestedThreshold);
+            Assert.False(StallGuardInfo.TryParse("G,300,1,1,1", out g));
+            Assert.False(StallGuardInfo.TryParse("G,1,1,1", out g));
         }
     }
 
@@ -302,6 +345,77 @@ namespace OpenWheel.Core.Tests
             Assert.Contains("hall", c.Snapshot.Problem);
             Assert.True(c.ClearError().Success);
             Assert.True(WaitFor(() => c.Snapshot.DeviceError == 0 && c.Snapshot.Problem == null, 1000));
+        }
+
+        // ------------------------------------------------------------ housekeeping and StallGuard (firmware 1.1)
+
+        [Fact]
+        public void HousekeepingIsReadOnConnectAndWarningsAreLogged()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            Assert.True(c.Snapshot.HousekeepingSupported);
+            Assert.NotNull(c.Snapshot.Housekeeping);
+            Assert.Equal(WheelWarnings.None, c.Snapshot.Housekeeping.Warnings);
+
+            w.Warnings = (int)WheelWarnings.DriverReset;   // STATUS flag bit4 makes the driver read :40# at once
+            Assert.True(WaitFor(() => c.Snapshot.Housekeeping != null && c.Snapshot.Housekeeping.Warnings == WheelWarnings.DriverReset, 1000));
+            Assert.Contains("wheel warning: motor driver was reset", LogOf(c));
+
+            w.Warnings = 0;
+            Assert.True(WaitFor(() => c.Snapshot.Housekeeping.Warnings == WheelWarnings.None, 1000));
+            Assert.Contains("wheel warnings cleared", LogOf(c));
+        }
+
+        [Fact]
+        public void OldFirmwareWithoutHousekeepingIsAskedOnlyOnce()
+        {
+            var w = new FakeWheel { NoHousekeeping = true };
+            WheelController c = Connected(this, w);
+            Thread.Sleep(300);   // several status polls
+            Assert.False(c.Snapshot.HousekeepingSupported);
+            Assert.Null(c.Snapshot.Housekeeping);
+            Assert.Equal(1, w.Received.FindAll(x => x == "40").Count);
+            Assert.True(c.Snapshot.IsConnected);
+        }
+
+        [Fact]
+        public void StallThresholdCanBeReadAndSet()
+        {
+            var w = new FakeWheel { StallReadings = "40,28,216" };
+            WheelController c = Connected(this, w);
+            StallGuardInfo g;
+            Assert.True(c.ReadStallGuard(out g).Success);
+            Assert.Equal(0, g.Threshold);
+            Assert.Equal(9, g.SuggestedThreshold);
+            Assert.True(c.SetStallThreshold(9).Success);
+            Assert.Equal(9, w.StallThreshold);
+            Assert.False(c.SetStallThreshold(300).Success);
+            Assert.True(c.MoveSteps(2000).Success);
+            Assert.True(c.Snapshot.IsMoving);
+            Assert.Equal((int)WheelError.Busy, c.SetStallThreshold(5).ErrorCode);   // the wheel refuses while moving
+        }
+
+        [Fact]
+        public void LedBrightnessCanBeReadAndSet()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            int pct;
+            Assert.True(c.ReadLedBrightness(out pct).Success);
+            Assert.Equal(100, pct);
+            Assert.True(c.SetLedBrightness(10).Success);
+            Assert.Equal(10, w.LedBrightness);
+            Assert.True(c.ReadLedBrightness(out pct).Success);
+            Assert.Equal(10, pct);
+            Assert.Equal((int)WheelError.BadParameter, c.SetLedBrightness(101).ErrorCode);
+
+            var old = new FakeWheel { NoLedBrightness = true };   // firmware 1.1
+            WheelController c2 = Connected(this, old);
+            CommandResult r = c2.ReadLedBrightness(out pct);
+            Assert.False(r.Success);
+            Assert.Equal((int)WheelError.UnknownCommand, r.ErrorCode);
+            Assert.True(c2.Snapshot.IsConnected);
         }
 
         // ------------------------------------------------------------ filter names stored in the wheel

@@ -1,5 +1,6 @@
-// Setup dialog: choose the wheel, edit filter names and focus offsets, watch the live status,
-// and run the few maintenance actions (home, halt, clear error, calibrate).
+// Setup dialog: choose the wheel, edit filter names and focus offsets, watch the live status and
+// health (temperatures, supply, warnings), tune stall detection, and run the few maintenance
+// actions (home, halt, clear error, calibrate).
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -24,6 +25,13 @@ namespace OpenWheel.Ascom
         private readonly Button btnCalibrate = new Button { Text = "Calibrate..." };
         private readonly ComboBox cmbMove = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
         private readonly Button btnMove = new Button { Text = "Move to" };
+        private readonly NumericUpDown numStall = new NumericUpDown { Minimum = 0, Maximum = 255 };
+        private readonly Button btnStallSave = new Button { Text = "Set" };
+        private readonly Button btnStallTest = new Button { Text = "Test move..." };
+        private readonly Label lblStall = new Label { AutoSize = false };
+        private readonly NumericUpDown numLed = new NumericUpDown { Minimum = 0, Maximum = 100, Increment = 5 };
+        private readonly Button btnLedSave = new Button { Text = "Set" };
+        private readonly Label lblLed = new Label { AutoSize = false };
         private readonly Button btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK };
         private readonly Button btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
         private readonly Timer timer = new Timer { Interval = 400 };
@@ -31,6 +39,12 @@ namespace OpenWheel.Ascom
         private List<UsbSerialDevice> candidates = new List<UsbSerialDevice>();
         private int shownSlots = -1;
         private bool acquired;
+        private bool stallLoaded;     // threshold read from the wheel once connected
+        private int stallTestPhase;   // 0 none, 1 test move running, 2 homing afterwards
+        private bool ledLoaded;       // brightness read from the wheel once connected
+        private bool ledSupported = true;
+
+        private const int StallTestSteps = 2000;
 
         public SetupForm()
         {
@@ -77,9 +91,28 @@ namespace OpenWheel.Ascom
 
             Controls.Add(new Label { Text = "Live status:", Left = 12, Top = y, Width = 200 });
             y += 20;
-            txtStatus.SetBounds(12, y, 596, 120);
+            txtStatus.SetBounds(12, y, 596, 190);
             Controls.Add(txtStatus);
-            y += 130;
+            y += 200;
+
+            Controls.Add(new Label { Text = "Stall detection:", Left = 12, Top = y + 4, Width = 110 });
+            numStall.SetBounds(125, y + 1, 60, 24);
+            btnStallSave.SetBounds(191, y, 50, 28);
+            btnStallTest.SetBounds(247, y, 100, 28);
+            lblStall.SetBounds(355, y + 1, 253, 30);
+            lblStall.ForeColor = Color.DimGray;
+            Controls.AddRange(new Control[] { numStall, btnStallSave, btnStallTest, lblStall });
+            new ToolTip().SetToolTip(numStall, "StallGuard threshold (0 = off). A stall stops the move with an error. Use 'Test move' to get a suggestion.");
+            y += 34;
+
+            Controls.Add(new Label { Text = "LED brightness %:", Left = 12, Top = y + 4, Width = 110 });
+            numLed.SetBounds(125, y + 1, 60, 24);
+            btnLedSave.SetBounds(191, y, 50, 28);
+            lblLed.SetBounds(247, y + 5, 361, 20);
+            lblLed.ForeColor = Color.DimGray;
+            Controls.AddRange(new Control[] { numLed, btnLedSave, lblLed });
+            new ToolTip().SetToolTip(numLed, "Brightness of the wheel's status LEDs, stored in the wheel. 0 = off (dark site).");
+            y += 38;
 
             btnHome.SetBounds(12, y, 80, 28);
             btnHalt.SetBounds(98, y, 80, 28);
@@ -100,6 +133,9 @@ namespace OpenWheel.Ascom
             btnClear.Click += (s, e) => Run(Server.Controller.ClearError(4000));
             btnCalibrate.Click += OnCalibrate;
             btnMove.Click += (s, e) => { if (cmbMove.SelectedIndex >= 0) Run(Server.Controller.MoveToSlot(cmbMove.SelectedIndex, 4000)); };
+            btnStallSave.Click += OnStallSave;
+            btnStallTest.Click += OnStallTest;
+            btnLedSave.Click += OnLedSave;
             btnOk.Click += OnOk;
             timer.Tick += (s, e) => RefreshStatus();
 
@@ -164,6 +200,7 @@ namespace OpenWheel.Ascom
                 sb.AppendLine("Position:     " + (s.Position < 0 ? (st.Busy ? "-1 (moving)" : "unknown (home the wheel)") : (s.Position + 1) + " of " + s.SlotCount + "  (slot " + s.Position + ")"));
                 sb.AppendLine("Calibrated:   " + (st.Calibrated ? "yes, " + st.Slots + " filters" : "NO"));
                 sb.AppendLine("Device error: " + (st.Error == 0 ? "none" : WheelErrors.Describe(st.Error) + " (code " + st.Error + ")"));
+                AppendHealth(sb, s);
             }
             if (!string.IsNullOrEmpty(s.Problem)) sb.AppendLine("Note:         " + s.Problem);
             txtStatus.Text = sb.ToString();
@@ -175,6 +212,8 @@ namespace OpenWheel.Ascom
             btnCalibrate.Enabled = ready && !st.Busy;
             btnMove.Enabled = ready && !st.Busy && cmbMove.SelectedIndex >= 0;
             cmbMove.Enabled = ready && !st.Busy;
+            UpdateStall(s, ready);
+            UpdateLed(s, ready);
 
             int slots = ready ? st.Slots : 0;
             bool onWheel = s.FilterConfigSupported;
@@ -184,6 +223,115 @@ namespace OpenWheel.Ascom
             bool dataReady = slots > 0 && (!onWheel || s.FilterNames != null);
             if (dataReady && slots != shownSlots) FillGrid(slots, s);
             grid.ReadOnly = !dataReady;
+        }
+
+        private static void AppendHealth(StringBuilder sb, WheelSnapshot s)
+        {
+            if (!s.HousekeepingSupported)
+            {
+                sb.AppendLine("Health:       not available (firmware older than 1.1)");
+                return;
+            }
+            WheelHousekeeping h = s.Housekeeping;
+            if (h == null) return;
+            CultureInfo ci = CultureInfo.InvariantCulture;
+            sb.AppendLine("MCU temp:     " + h.McuTemperature.ToString("0.0", ci) + " C   (chip, a few degrees above ambient)");
+            sb.AppendLine("Driver temp:  " + (h.DriverTemperatureClass == null ? "unknown (driver not answering)"
+                                            : h.DriverTemperatureClass == 0 ? "normal (below 120 C)"
+                                            : "above " + h.DriverTemperatureClass.Value.ToString(ci) + " C"));
+            string supply = "3.3 V rail " + h.Vdda.ToString("0.00", ci) + " V";
+            if (h.Supply5V.HasValue)
+            {
+                supply += ", +5V " + h.Supply5V.Value.ToString("0.00", ci) + " V";
+                if (h.Supply5VMin.HasValue) supply += " (lowest during last move " + h.Supply5VMin.Value.ToString("0.00", ci) + " V)";
+            }
+            sb.AppendLine("Supply:       " + supply);
+            sb.AppendLine("Warnings:     " + WheelHousekeeping.Describe(h.Warnings));
+        }
+
+        private void UpdateStall(WheelSnapshot s, bool ready)
+        {
+            bool supported = ready && s.HousekeepingSupported;
+            if (supported && !stallLoaded)
+            {
+                stallLoaded = true;
+                StallGuardInfo g;
+                if (Server.Controller.ReadStallGuard(out g, 2000).Success)
+                {
+                    numStall.Value = g.Threshold;
+                    lblStall.Text = g.Threshold == 0 ? "Off. Run a test move for a suggestion." : "On.";
+                }
+                else stallLoaded = false;   // retry on the next refresh
+            }
+            if (!ready) stallLoaded = false;
+            if (ready && !s.HousekeepingSupported) lblStall.Text = "Needs firmware 1.1 or newer.";
+
+            bool idle = supported && !s.Status.Busy;
+            numStall.Enabled = idle && stallTestPhase == 0;
+            btnStallSave.Enabled = idle && stallTestPhase == 0;
+            btnStallTest.Enabled = idle && stallTestPhase == 0 && s.Status.Calibrated;
+
+            if (stallTestPhase == 0 || !ready || s.Status.Busy) return;
+            if (stallTestPhase == 1)
+            {
+                // test move finished: read the load figures, suggest a threshold, then home the wheel
+                stallTestPhase = 2;
+                StallGuardInfo g;
+                if (Server.Controller.ReadStallGuard(out g, 2000).Success && g.Min.HasValue)
+                {
+                    lblStall.Text = "Load " + g.Min + ".." + g.Max + " (lower = harder). Suggested " + g.SuggestedThreshold + ": press Set.";
+                    numStall.Value = g.SuggestedThreshold.Value;
+                }
+                else lblStall.Text = "No readings from the test move.";
+                Run(Server.Controller.Home(4000));
+                return;
+            }
+            stallTestPhase = 0;   // homing after the test finished
+        }
+
+        private void UpdateLed(WheelSnapshot s, bool ready)
+        {
+            if (!ready) { ledLoaded = false; ledSupported = true; }
+            else if (!ledLoaded && s.HousekeepingSupported)
+            {
+                ledLoaded = true;
+                int pct;
+                CommandResult r = Server.Controller.ReadLedBrightness(out pct, 2000);
+                if (r.Success) { numLed.Value = pct; lblLed.Text = pct == 0 ? "LEDs off." : ""; }
+                else if (r.ErrorCode == (int)WheelError.UnknownCommand) ledSupported = false;
+                else ledLoaded = false;   // retry on the next refresh
+            }
+            bool usable = ready && s.HousekeepingSupported && ledSupported;
+            if (ready && !usable) lblLed.Text = "Needs firmware 1.2 or newer.";
+            numLed.Enabled = usable && !s.Status.Busy;
+            btnLedSave.Enabled = usable && !s.Status.Busy;
+        }
+
+        private void OnLedSave(object sender, EventArgs e)
+        {
+            int v = (int)numLed.Value;
+            CommandResult r = Server.Controller.SetLedBrightness(v, 4000);
+            if (r.Success) lblLed.Text = (v == 0 ? "LEDs off" : "Set to " + v + " %") + " (stored in the wheel).";
+            Run(r);
+        }
+
+        private void OnStallSave(object sender, EventArgs e)
+        {
+            int v = (int)numStall.Value;
+            CommandResult r = Server.Controller.SetStallThreshold(v, 4000);
+            if (r.Success) lblStall.Text = v == 0 ? "Off (stored in the wheel)." : "Set to " + v + " (stored in the wheel). Check a few moves.";
+            Run(r);
+        }
+
+        private void OnStallTest(object sender, EventArgs e)
+        {
+            DialogResult d = MessageBox.Show(this,
+                "The wheel turns " + StallTestSteps + " steps while the motor load is measured, then homes again (about 10 s).\r\n\r\nStart the test move?",
+                "OpenWheel", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (d != DialogResult.Yes) return;
+            CommandResult r = Server.Controller.MoveSteps(StallTestSteps, 4000);
+            if (r.Success) { stallTestPhase = 1; lblStall.Text = "Measuring..."; }
+            Run(r);
         }
 
         private void FillGrid(int slots, WheelSnapshot s)

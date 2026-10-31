@@ -37,7 +37,7 @@ All new commands follow the existing `:NN[params]#` framing and reply `...#`.
 - `<slot>`: current slot, **-1 while moving**. `<target>`: target slot or -1.
 - `<flags>` bitmask: bit0 calibrated, bit1 homed, bit2 button-pressed-during-boot, bit3 EEPROM-CRC-failed (reserved for more).
 - `<proto>`: protocol version integer. Starts at 2 (legacy implicit = 1). Lets the driver refuse/adapt to old firmware.
-- **Error codes** (`src/error_codes.h`): 0 none. Sticky device faults, shown in STATUS/`:34` until cleared with `:34,0#`: 1 homing timeout, 2 move timeout, 3 calibration failed, 4 EEPROM missing/write failed, 5 motor driver (TMC2209 silent or overtemp/short), 6 hall sensor not seen. Command rejections, only in the `ERR,<code>#` reply: 7 bad parameter, 8 busy, 9 not calibrated, 10 unknown command, 11 bad format/too long, 12 not supported at runtime.
+- **Error codes** (`src/error_codes.h`): 0 none. Sticky device faults, shown in STATUS/`:34` until cleared with `:34,0#`: 1 homing timeout, 2 move timeout, 3 calibration failed, 4 EEPROM missing/write failed, 5 motor driver (TMC2209 silent or overtemp/short), 6 hall sensor not seen, 13 motor stalled (StallGuard, added after the rejections). Command rejections, only in the `ERR,<code>#` reply: 7 bad parameter, 8 busy, 9 not calibrated, 10 unknown command, 11 bad format/too long, 12 not supported at runtime. STATUS flag bit4 = housekeeping warning; details via `:40#` (see docs/PROTOCOL.md).
   A move/home/calibration timeout is refined to 5 or 6 when the TMC2209 reports a fault or no hall pulse was seen.
 - `:35#` starts calibration (needed for the driver's `Calibrate` action).
 - Reply format: queries `<value>#`; set/action `OK#`; rejected `ERR,<code>#`. Parameters accept `:07 3#`, `:07,3#` and `:073#`.

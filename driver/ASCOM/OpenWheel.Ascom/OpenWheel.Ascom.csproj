@@ -8,7 +8,7 @@
     <Platforms>x86</Platforms>
     <AssemblyName>OpenWheel.Ascom.Server</AssemblyName>
     <RootNamespace>OpenWheel.Ascom</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <Description>ASCOM FilterWheel driver for the OpenWheel (LocalServer)</Description>
     <!-- ASCOM Platform 7 assemblies come from the GAC of the machine that builds -->

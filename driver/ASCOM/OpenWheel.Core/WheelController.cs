@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.Threading;
 
 namespace OpenWheel.Core
@@ -24,6 +25,8 @@ namespace OpenWheel.Core
         public int CommandTimeoutMs = 500;
         public int PollIdleMs = 1000;
         public int PollBusyMs = 200;
+        /// <summary>Housekeeping (:40#) is read this often, and at once when the status warning flag changes.</summary>
+        public int HousekeepingMs = 5000;
         /// <summary>Consecutive timeouts/garbage replies before the connection is declared lost.</summary>
         public int MaxConsecutiveFailures = 3;
         /// <summary>The firmware gives up a move/home after 30 s; the driver halts the wheel after this.</summary>
@@ -53,6 +56,10 @@ namespace OpenWheel.Core
         public int[] FocusOffsets { get; internal set; }
         /// <summary>False when the firmware has no name storage (older firmware); then the driver keeps names on the PC.</summary>
         public bool FilterConfigSupported { get; internal set; }
+        /// <summary>Last housekeeping reading (temperatures, supply, warnings), or null if not read yet / not supported.</summary>
+        public WheelHousekeeping Housekeeping { get; internal set; }
+        /// <summary>False when the firmware has no housekeeping command (older than 1.1).</summary>
+        public bool HousekeepingSupported { get; internal set; }
 
         /// <summary>Human readable reason for the last problem (lost connection, device fault, watchdog), or null.</summary>
         public string Problem { get; internal set; }
@@ -132,6 +139,9 @@ namespace OpenWheel.Core
         private bool cfgSupported = true;    // false once the wheel answered ERR,10 to :36#
         private long cfgNextTryMs;
         private string stickyProblem;   // e.g. watchdog halt; survives status polls until cleared by the next successful command
+        private WheelHousekeeping hk;
+        private bool hkSupported = true;     // false once the wheel answered ERR,10 to :40#
+        private long hkNextMs;
 
         private static readonly long start = Stopwatch.GetTimestamp();
         private static long NowMs() { return (Stopwatch.GetTimestamp() - start) * 1000 / Stopwatch.Frequency; }
@@ -215,6 +225,62 @@ namespace OpenWheel.Core
         public CommandResult ClearError(int waitMs = 3000)
         {
             return Submit(() => SendAction(Commands.ClearError), waitMs, false);
+        }
+
+        /// <summary>Relative move by motor steps (:21). Leaves the wheel between slots: home afterwards.</summary>
+        public CommandResult MoveSteps(int steps, int waitMs = 3000)
+        {
+            return Submit(() => SendAction(Commands.MoveSteps(steps)), waitMs, false);
+        }
+
+        /// <summary>Reads the StallGuard threshold and the readings of the last step move (:41#).</summary>
+        public CommandResult ReadStallGuard(out StallGuardInfo info, int waitMs = 3000)
+        {
+            StallGuardInfo got = null;
+            CommandResult r = Submit(() =>
+            {
+                Reply rep = Send(Commands.GetStallGuard);
+                if (snapshot.Connection != ConnectionState.Connected) return CommandResult.Fail("connection lost");
+                if (rep.Kind == ReplyKind.Error) return Rejected(rep);
+                if (rep.Kind != ReplyKind.Value || !StallGuardInfo.TryParse(rep.Value, out got)) return CommandResult.Fail("no valid answer from the wheel");
+                return CommandResult.Ok;
+            }, waitMs, false);
+            info = r.Success ? got : null;
+            return r;
+        }
+
+        /// <summary>Sets the StallGuard threshold 0..255 (0 = stall detection off); the wheel stores it in its EEPROM.</summary>
+        public CommandResult SetStallThreshold(int threshold, int waitMs = 3000)
+        {
+            if (threshold < 0 || threshold > 255) return CommandResult.Fail("threshold must be 0..255", (int)WheelError.BadParameter);
+            return Submit(() => SendAction(Commands.SetStallThreshold(threshold)), waitMs, false);
+        }
+
+        /// <summary>
+        /// Reads the status LED brightness 0..100 % (:43#, firmware 1.2+). A firmware without it answers
+        /// "unknown command" (ErrorCode 10).
+        /// </summary>
+        public CommandResult ReadLedBrightness(out int percent, int waitMs = 3000)
+        {
+            int got = -1;
+            CommandResult r = Submit(() =>
+            {
+                Reply rep = Send(Commands.GetLedBrightness);
+                if (snapshot.Connection != ConnectionState.Connected) return CommandResult.Fail("connection lost");
+                if (rep.Kind == ReplyKind.Error) return Rejected(rep);
+                if (rep.Kind != ReplyKind.Value || !int.TryParse(rep.Value, NumberStyles.None, CultureInfo.InvariantCulture, out got) || got > 100)
+                    return CommandResult.Fail("no valid answer from the wheel");
+                return CommandResult.Ok;
+            }, waitMs, false);
+            percent = r.Success ? got : -1;
+            return r;
+        }
+
+        /// <summary>Sets the status LED brightness 0..100 % (0 = off); the wheel stores it in its EEPROM.</summary>
+        public CommandResult SetLedBrightness(int percent, int waitMs = 3000)
+        {
+            if (percent < 0 || percent > 100) return CommandResult.Fail("brightness must be 0..100 %", (int)WheelError.BadParameter);
+            return Submit(() => SendAction(Commands.SetLedBrightness(percent)), waitMs, false);
         }
 
         /// <summary>Halt jumps the queue.</summary>
@@ -352,6 +418,10 @@ namespace OpenWheel.Core
                     ResetFilterConfig();
                     ReadFilterConfig(st.Slots);
                     if (transport == null) return;   // connection was lost while reading
+                    hk = null;
+                    hkSupported = true;
+                    ReadHousekeeping();
+                    if (transport == null) return;
                     LogMsg("connected " + l.Name + " " + id + " " + st);
                     Publish(ConnectionState.Connected, id, st, ProblemFor(st));
                     return;
@@ -414,6 +484,7 @@ namespace OpenWheel.Core
                 nextPollMs = NowMs() + (st != null && st.Busy ? opt.PollBusyMs : opt.PollIdleMs);
                 Watchdog(st);
                 if (snapshot.Connection == ConnectionState.Connected) MaybeRefreshFilterConfig(st);
+                if (snapshot.Connection == ConnectionState.Connected) MaybeRefreshHousekeeping(st);
             }
             else
             {
@@ -461,6 +532,43 @@ namespace OpenWheel.Core
                 nextPollMs = 0;
                 Publish(snapshot.Connection, snapshot.Identity, snapshot.Status, problem);
             }
+        }
+
+        // ------------------------------------------------------------------ housekeeping (:40#, firmware 1.1+)
+
+        /// <summary>Reads :40# into the cache and logs warnings that appear or clear.</summary>
+        private void ReadHousekeeping()
+        {
+            hkNextMs = NowMs() + opt.HousekeepingMs;
+            Reply r = Send(Commands.Housekeeping);
+            if (transport == null) return;
+            if (r.Kind == ReplyKind.Error && r.ErrorCode == (int)WheelError.UnknownCommand)
+            {
+                hkSupported = false;
+                LogMsg("firmware has no housekeeping command");
+                return;
+            }
+            WheelHousekeeping h;
+            if (r.Kind != ReplyKind.Value || !WheelHousekeeping.TryParse(r.Value, out h)) return;
+
+            WheelWarnings before = hk == null ? WheelWarnings.None : hk.Warnings;
+            if (h.Warnings != before)
+            {
+                WheelWarnings added = h.Warnings & ~before;
+                if (added != WheelWarnings.None) LogMsg("wheel warning: " + WheelHousekeeping.Describe(added) + " (" + h + ")");
+                else LogMsg("wheel warnings cleared, now: " + WheelHousekeeping.Describe(h.Warnings));
+            }
+            hk = h;
+        }
+
+        private void MaybeRefreshHousekeeping(WheelStatus st)
+        {
+            if (!hkSupported || st == null) return;
+            bool flagChanged = hk != null && st.HasWarning != (hk.Warnings != WheelWarnings.None);
+            if (!flagChanged && NowMs() < hkNextMs) return;
+            ReadHousekeeping();
+            if (snapshot.Connection == ConnectionState.Connected)
+                Publish(ConnectionState.Connected, snapshot.Identity, snapshot.Status, snapshot.Problem);
         }
 
         // ------------------------------------------------------------------ filter names / focus offsets (stored in the wheel)
@@ -698,7 +806,9 @@ namespace OpenWheel.Core
                 Problem = prob,
                 FilterNames = cfgNames,
                 FocusOffsets = cfgOffsets,
-                FilterConfigSupported = cfgSupported
+                FilterConfigSupported = cfgSupported,
+                Housekeeping = conn == ConnectionState.Connected ? hk : null,
+                HousekeepingSupported = hkSupported
             };
             snapshot = s;
             Action<WheelSnapshot> h = SnapshotChanged;

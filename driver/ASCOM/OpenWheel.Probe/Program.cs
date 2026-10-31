@@ -48,6 +48,28 @@ internal static class Program
             Console.WriteLine("home: " + wheel.Home() + "  -> position right after the command: " + wheel.Snapshot.Position + ", moving=" + wheel.Snapshot.IsMoving);
             while (!(wheel.Snapshot.IsConnected && !wheel.Snapshot.IsMoving && wheel.Snapshot.Status.State == WheelState.Idle)) Thread.Sleep(100);
             Console.WriteLine("homed: position=" + wheel.Snapshot.Position + " problem=" + (wheel.Snapshot.Problem ?? "none"));
+
+            // firmware 1.1: housekeeping and StallGuard (the paths the setup dialog uses)
+            WheelSnapshot h = wheel.Snapshot;
+            Console.WriteLine("housekeeping: supported=" + h.HousekeepingSupported + " " + (h.Housekeeping == null ? "-" : h.Housekeeping + " driverTemp=" + h.Housekeeping.DriverTemperatureClass));
+            if (h.HousekeepingSupported)
+            {
+                StallGuardInfo g;
+                Console.WriteLine("stall read: " + wheel.ReadStallGuard(out g) + (g == null ? "" : " threshold=" + g.Threshold));
+                Console.WriteLine("test move: " + wheel.MoveSteps(2000));
+                Thread.Sleep(300);
+                while (wheel.Snapshot.IsMoving) Thread.Sleep(100);
+                Console.WriteLine("stall read: " + wheel.ReadStallGuard(out g) + (g == null ? "" : " min=" + g.Min + " max=" + g.Max + " suggested=" + g.SuggestedThreshold));
+                Console.WriteLine("home: " + wheel.Home());
+                Thread.Sleep(300);
+                while (wheel.Snapshot.IsMoving) Thread.Sleep(100);
+                Console.WriteLine("after: " + wheel.Snapshot.Status + " position=" + wheel.Snapshot.Position);
+
+                int led;
+                CommandResult lr = wheel.ReadLedBrightness(out led);
+                Console.WriteLine("led brightness: " + lr + " " + led + " %");
+                if (lr.Success) Console.WriteLine("led set back to " + led + ": " + wheel.SetLedBrightness(led));
+            }
             wheel.Disconnect();
             Thread.Sleep(400);
             Console.WriteLine("disconnected: " + wheel.Snapshot.Connection);
