@@ -7,13 +7,12 @@ FilterConfig::FilterConfig(ExternalEEPROM* e) : eeprom(e) {
 
 void FilterConfig::setDefaults() {
     memset(&data, 0, sizeof(data));
-    data.version = 1;
+    data.version = 2;
+    data.ledBrightness = 100;
 }
 
-uint16_t FilterConfig::calculateCRC(const FilterConfigData& d) const {
+uint16_t FilterConfig::calculateCRC(const uint8_t* p, size_t length) {
     uint16_t crc = 0xFFFF;
-    const uint8_t* p = (const uint8_t*)&d;
-    size_t length = sizeof(FilterConfigData) - sizeof(d.crc);
     for (size_t i = 0; i < length; i++) {
         crc ^= ((uint16_t)p[i] << 8);
         for (uint8_t b = 0; b < 8; b++) {
@@ -30,7 +29,18 @@ bool FilterConfig::load() {
         p[i] = eeprom->read(FILTER_CONFIG_ADDR + i);
     }
 
-    bool ok = tmp.magic == FILTER_CONFIG_MAGIC && tmp.version == 1 && tmp.crc == calculateCRC(tmp);
+    bool ok = false;
+    if (tmp.magic == FILTER_CONFIG_MAGIC && tmp.version == 2) {
+        ok = tmp.crc == calculateCRC(p, sizeof(tmp) - sizeof(tmp.crc));
+        if (tmp.ledBrightness > 100) tmp.ledBrightness = 100;
+    } else if (tmp.magic == FILTER_CONFIG_MAGIC && tmp.version == 1) {
+        // version 1: CRC right after focusOffsets; migrate (saved as version 2 on the next save)
+        uint16_t crc1 = p[FILTER_CONFIG_V1_SIZE - 2] | ((uint16_t)p[FILTER_CONFIG_V1_SIZE - 1] << 8);
+        ok = crc1 == calculateCRC(p, FILTER_CONFIG_V1_SIZE - 2);
+        tmp.ledBrightness = 100;
+        memset(tmp.reserved, 0, sizeof(tmp.reserved));
+        tmp.version = 2;
+    }
     if (ok) {
         // names must be terminated: never trust stored data
         for (uint8_t s = 0; s < MAX_SLOTS; s++) {
@@ -46,8 +56,8 @@ bool FilterConfig::load() {
 
 bool FilterConfig::save() {
     data.magic = FILTER_CONFIG_MAGIC;
-    data.version = 1;
-    data.crc = calculateCRC(data);
+    data.version = 2;
+    data.crc = calculateCRC((const uint8_t*)&data, sizeof(data) - sizeof(data.crc));
 
     const uint8_t* want = (const uint8_t*)&data;
     for (size_t i = 0; i < sizeof(data); i++) {

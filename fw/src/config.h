@@ -5,7 +5,16 @@
 
 // Firmware information
 #define FIRMWARE_NAME    "OpenWheel"
-#define FIRMWARE_VERSION "FW1.0.1"
+#define FIRMWARE_VERSION "FW1.2.0"
+
+// Board revision (set by the PlatformIO environment)
+//   1 = prototype board: no +5V sense divider, TMC2209 INDEX not connected
+//   2 = redesigned board: +5V sense divider on PA0, TMC2209 INDEX on PA6
+#ifndef HW_REV
+#define HW_REV 1
+#endif
+#define HAS_V5_SENSE   (HW_REV >= 2)
+#define HAS_TMC_INDEX  (HW_REV >= 2)
 
 // USB CDC Serial Configuration
 // STM32G0B1 has native USB support - use USB CDC for Serial communication
@@ -74,7 +83,15 @@
 #define BASE_OFFSET 308  // Base offset for wheel geometry (in steps)
 
 // Motor current settings (mA)
+// HW_REV 1 keeps the TMC2209 default i_scale_analog = 1: VREF is unconnected, so the real current
+// is this value scaled by whatever VREF floats to. That setup is proven on the prototype. A true
+// 400 mA (i_scale_analog = 0) browned out the driver: the whole board runs from USB 5V behind a
+// 0.5 A polyfuse. HW_REV 2 uses the internal reference with a lower, still to be verified current.
+#if HW_REV >= 2
+#define DEFAULT_RUN_CURRENT_MA 250
+#else
 #define DEFAULT_RUN_CURRENT_MA 400
+#endif
 #define DEFAULT_HOLD_CURRENT_MA 100
 
 // TMC2209 Driver Configuration
@@ -83,6 +100,17 @@
 #define TMC_HOLD_MULTIPLIER 0.5    // Hold current multiplier (0.0-1.0). Reduces current when motor is idle
 #define TMC_PWM_AUTOSCALE 1        // Enable automatic PWM amplitude scaling (0=disabled, 1=enabled)
 
+// StallGuard4 (stall -> DIAG). Threshold SGTHRS is stored in the EEPROM (:42), 0 = detection off.
+// A stall is flagged when SG_RESULT <= 2 * SGTHRS while the motor runs faster than STALL_MIN_SPEED.
+#define STALL_MIN_SPEED   500      // steps/s; below this the driver ignores StallGuard (TCOOLTHRS)
+#define STALL_BLANK_MS    200      // ignore DIAG this long after the motor starts (StealthChop settles)
+#define SG_SAMPLE_MS      20       // SG_RESULT sampling period during :21 step moves (tuning data)
+
+// Housekeeping (MCU temperature, +5V rail)
+#define V5_DIVIDER        2        // +5V sense divider ratio (10k / 10k)
+#define V5_LOW_MV         4750     // warning below this (TMC2209 VS minimum)
+#define HK_IDLE_MS        1000     // full housekeeping sample period
+#define HK_MOVE_MS        5        // +5V sample period while the motor runs
 // ---------------------------------------------------------------------------
 // Pin mapping (STM32G0B1 - WeAct Studio board compatible)
 // Update these if you change wiring
@@ -98,7 +126,11 @@
 #define EN_PIN           PB0  // Enable (active LOW)
 #define DIR_PIN          PB1  // Direction
 #define STEP_PIN         PB2  // Step
-#define DIAG_PIN         PA7  // Diagnostic output from TMC2209
+#define DIAG_PIN         PA7  // Diagnostic output from TMC2209 (driver error or stall)
+#define INDEX_PIN        PA6  // TMC2209 INDEX, configured as overtemperature prewarning (HW_REV 2)
+
+// +5V rail sense (HW_REV 2): +5V / V5_DIVIDER on ADC_IN0
+#define PIN_V5_SENSE     PA0
 
 // Unused TMC pins (SPI mode - not used in UART mode)
 #define CS_PIN           NULL  // Chip select

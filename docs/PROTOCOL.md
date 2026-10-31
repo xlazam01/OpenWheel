@@ -56,6 +56,10 @@ soon as the move has started; poll `:33#` (or `:06#`) for completion.
 | 37 | set filter name | `slot,name` | OK |
 | 38 | get focus offsets of the calibrated slots | | `o0,o1,...#` |
 | 39 | set focus offset | `slot,offset` | OK |
+| 40 | housekeeping | | `H,<mcu_temp>,<vdda>,<v5>,<v5_min>,<driver_temp>,<warnings>#` |
+| 41 | StallGuard threshold and readings | | `G,<threshold>,<last>,<min>,<max>#` |
+| 42 | set StallGuard threshold (stored in EEPROM) | 0..255, 0 = off | OK |
+| 43 / 44 | get / set status LED brightness (stored in EEPROM) | 0..100 %, 0 = off | value / OK |
 
 ### Identify (`:32#`)
 
@@ -70,6 +74,14 @@ characters and must not contain `,` `#` `:` or `|`; leading and trailing spaces 
 name clears the entry. Focus offsets are signed 16 bit. Each set command writes only the bytes that
 changed and answers after about 0.25 s. Firmware older than this feature answers `ERR,10`.
 
+### LED brightness (`:43`, `:44`)
+
+Perceptual scale (gamma 2) by software PWM at 200 Hz; 100 % drives the LEDs directly, 0 % keeps
+them dark (dark site). Default 100 %. Stored with the filter names (record version 2; a version 1
+record from older firmware is migrated without losing names, offsets or the stall threshold).
+`ERR,8` while the wheel moves (the EEPROM write would disturb the hall timing). Firmware 1.2+;
+older firmware answers `ERR,10`.
+
 ### Status (`:33#`)
 
 | Field | Values |
@@ -79,7 +91,33 @@ changed and answers after about 0.25 s. Firmware older than this feature answers
 | target | target slot of a slot move, else `-1` |
 | slots | number of slots found by calibration (0 = not calibrated) |
 | error | sticky error code (0 none) |
-| flags | bit0 calibrated, bit1 position known, bit2 button held at boot, bit3 EEPROM fault |
+| flags | bit0 calibrated, bit1 position known, bit2 button held at boot, bit3 EEPROM fault, bit4 housekeeping warning (see `:40#`) |
+
+### Housekeeping (`:40#`)
+
+Example: `H,312,3297,5040,4890,0,0#`. Firmware older than this feature answers `ERR,10`.
+
+| Field | Values |
+|---|---|
+| mcu_temp | MCU die temperature in 0.1 °C (internal sensor, factory calibrated); reads a few °C above ambient |
+| vdda | MCU supply in mV, measured against the internal reference |
+| v5 | +5V rail in mV, `-1` on boards without the sense divider (HW rev 1) |
+| v5_min | lowest +5V reading since the last move started (sampled every 5 ms while the motor runs), `-1` if not available |
+| driver_temp | TMC2209 temperature class: `0` below 120 °C, else the threshold passed (`120`, `143`, `150`, `157`); `-1` driver not answering. Read while idle |
+| warnings | bit0 +5V below 4.75 V (now or since the last move started), bit1 TMC2209 overtemperature prewarning, bit2 TMC2209 was reset by a supply dip and re-initialised (cleared with `:34,0#`), bit3 crystal not running, clocks from the internal oscillators |
+
+### StallGuard (`:41`, `:42`)
+
+The TMC2209 measures the motor load in StealthChop and reports it as `SG_RESULT` (0..510, lower =
+more load). When the threshold is non-zero, a reading at or below `2 × threshold` while the motor
+runs faster than 500 steps/s stops the move with error 13. The first 200 ms of each move are
+ignored while the driver settles. Default 0 (off); the threshold is stored with the filter names,
+so it survives a calibration reset.
+
+`:41#` returns `G,<threshold>,<last>,<min>,<max>#`: the threshold and the `SG_RESULT` readings
+of the last `:21` step move (`-1` if none; readings are only taken in step moves, so hall timing
+is not disturbed). To tune: run `:21,2000#` a few times, note the lowest `min`, and set the
+threshold to about a third of it (`:42,<value>#`). Check that normal moves and homing still work.
 
 ## Error codes
 
@@ -100,6 +138,7 @@ Source of truth: `fw/src/error_codes.h`.
 | 10 | unknown command | rejection |
 | 11 | bad format / line too long | rejection |
 | 12 | not changeable at runtime | rejection |
+| 13 | motor stalled (StallGuard) | sticky fault |
 
 Sticky faults put the wheel into the error state for 10 s (both LEDs alternate), then back to idle;
 the code stays in `:33#` / `:34#` until cleared with `:34,0#`. Rejections appear only in the reply.

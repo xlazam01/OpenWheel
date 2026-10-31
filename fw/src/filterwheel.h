@@ -47,11 +47,29 @@ public:
   int16_t getReportedSlot() const;
   // Target of a slot move, -1 if none (also -1 for step moves and homing)
   int16_t getTargetSlot() const;
-  // STATUS flag bits: 1=calibrated, 2=position known (homed), 4=button held at boot, 8=EEPROM fault
+  // STATUS flag bits: 1=calibrated, 2=position known (homed), 4=button held at boot, 8=EEPROM fault,
+  // 16=housekeeping warning present (details in getWarnings())
   uint8_t getFlags() const;
+  // Housekeeping warning bits (WARN_*)
+  uint8_t getWarnings() const;
+  static const uint8_t WARN_V5_LOW       = 0x01;  // +5V below V5_LOW_MV now or since the last move started
+  static const uint8_t WARN_DRIVER_OTPW  = 0x02;  // TMC2209 overtemperature prewarning
+  static const uint8_t WARN_DRIVER_RESET = 0x04;  // TMC2209 lost its configuration (power dip) and was re-initialised
+  static const uint8_t WARN_NO_CRYSTAL   = 0x08;  // 8 MHz crystal did not start, running from internal oscillators
+  // TMC2209 temperature class from DRV_STATUS: 0 (below 120 C), 120, 143, 150 or 157; -1 if unknown
+  int16_t getDriverTempClass() const;
+
+  // StallGuard. Threshold 0 disables stall detection. Statistics are from the last :21 step move.
+  FwError setStallThreshold(uint8_t value);
+  uint8_t getStallThreshold() const { return filterConfig.getStallThreshold(); }
+
+  // Status LED brightness 0..100 % (0 = off), stored in the EEPROM
+  FwError setLedBrightness(uint8_t percent);
+  uint8_t getLedBrightness() const { return filterConfig.getLedBrightness(); }
+  int16_t sgLast, sgMin, sgMax;   // -1 = no sample
   // Sticky device fault (FW_OK if none). Stays set after the ERROR state ends until cleared.
   FwError getError() const { return lastError; }
-  void clearError() { lastError = FW_OK; }
+  void clearError() { lastError = FW_OK; driverWasReset = false; }
 
   // Movement control
   void stopMovement();
@@ -76,6 +94,9 @@ private:
   void raiseError(FwError code);                 // sticky fault: stop motor, enter STATE_ERROR
   FwError classifyTimeout(FwError timeoutCode);  // refine a timeout: driver fault / no hall pulses / plain timeout
   bool checkDriver();                            // TMC2209 answers and reports no overtemp/short
+  void configureDriver();                        // write the full TMC2209 configuration
+  void applyStallThreshold();                    // SGTHRS + TCOOLTHRS from the stored threshold
+  void watchMotion();                            // motion start, DIAG (stall / driver error), SG sampling
 
   // Helper methods
   uint8_t findHomeSlot();
@@ -94,6 +115,12 @@ private:
   bool eepromFault;
   uint16_t pulsesSeen;      // hall pulses seen during the current move/home/calibration
   unsigned long lastDriverCheck;
+  uint32_t driverStatus;    // last DRV_STATUS read while idle
+  bool driverStatusValid;
+  bool driverWasReset;      // GSTAT.reset seen after boot -> driver re-initialised
+  bool motorWasRunning;
+  unsigned long motionStartTime;
+  unsigned long lastSgSample;
 
   // Movement tracking
   bool inPulse;

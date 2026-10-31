@@ -19,5 +19,7 @@ enum FwError : uint8_t {
     FW_ERR_NOT_CALIBRATED  = 9,   // no valid calibration data
     FW_ERR_UNKNOWN_CMD     = 10,  // command number not implemented
     FW_ERR_BAD_FORMAT      = 11,  // malformed or too long command line
-    FW_ERR_NOT_SUPPORTED   = 12   // command known but not changeable at runtime
+    FW_ERR_NOT_SUPPORTED   = 12,  // command known but not changeable at runtime
+    // Sticky device fault added after the rejections (numbers are never reused)
+    FW_ERR_MOTOR_STALL     = 13   // TMC2209 StallGuard: motor stalled while moving (jam, blocked wheel)
 };

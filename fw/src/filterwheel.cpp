@@ -3,6 +3,9 @@
 #include "stepper_timer.h"
 
 #include "protocol_openwheel.h"
+#include "housekeeping.h"
+#include "clock_config.h"
+#include "leds.h"
 
 // Timeouts
 static const unsigned long MOVE_TIMEOUT_MS       = 30000;
@@ -13,6 +16,13 @@ static const unsigned long DRIVER_CHECK_MS       = 2000;   // idle TMC2209 healt
 
 // TMC2209 DRV_STATUS fault bits: ot, s2ga, s2gb, s2vsa, s2vsb
 static const uint32_t TMC_FAULT_MASK = 0x0000003E;
+static const uint32_t TMC_OTPW       = 0x00000001;
+static const uint8_t  TMC_GSTAT_RESET = 0x01;
+static const uint32_t TMC_FCLK       = 12000000UL;  // internal clock, TSTEP / TCOOLTHRS unit
+
+// DIAG rising edge (stall or driver error), handled in watchMotion()
+static volatile bool diagEvent = false;
+static void onDiagRise() { diagEvent = true; }
 
 // External C function for bootloader jump
 extern "C" void JumpToBootloader(void);
@@ -24,6 +34,9 @@ TMC2209Stepper  driver(&Serial2, R_SENSE, DRIVER_ADDRESS);
 HallSensor      hallSensor(PIN_HALL, PIN_STATUS_LED2);
 
 FilterWheel::FilterWheel() :
+    sgLast(-1),
+    sgMin(-1),
+    sgMax(-1),
     filterConfig(&eeprom),
     state(STATE_INIT),
     currentSlot(0),
@@ -33,6 +46,12 @@ FilterWheel::FilterWheel() :
     eepromFault(false),
     pulsesSeen(0),
     lastDriverCheck(0),
+    driverStatus(0),
+    driverStatusValid(false),
+    driverWasReset(false),
+    motorWasRunning(false),
+    motionStartTime(0),
+    lastSgSample(0),
     inPulse(false),
     pulseStartPosition(0),
     stateStartTime(0),
@@ -55,37 +74,22 @@ void FilterWheel::init_hardware() {
     pinMode(DIR_PIN, OUTPUT);
     pinMode(STEP_PIN, OUTPUT);
     pinMode(DIAG_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(DIAG_PIN), onDiagRise, RISING);
+#if HAS_TMC_INDEX
+    pinMode(INDEX_PIN, INPUT);
+#endif
 
     // Enable driver (EN active low) - keep enabled all the time
     digitalWrite(EN_PIN, LOW);
 
     // Configure LED pins (active LOW)
-    pinMode(PIN_STATUS_LED1, OUTPUT);
-    pinMode(PIN_STATUS_LED2, OUTPUT);
-    digitalWrite(PIN_STATUS_LED1, HIGH);  // OFF (active low)
-    digitalWrite(PIN_STATUS_LED2, HIGH);  // OFF (active low)
+    ledsBegin();
 
     // Start UART used by TMC2209
     Serial2.begin(115200);
 
     // Initialize TMC driver over UART
-    driver.begin();
-    driver.toff(TMC_TOFF);
-    driver.rms_current(DEFAULT_RUN_CURRENT_MA);
-    driver.microsteps(TMC_MICROSTEPS);
-    driver.pwm_autoscale(TMC_PWM_AUTOSCALE);
-
-    // Set hold current to reduce power consumption when idle
-    driver.hold_multiplier(TMC_HOLD_MULTIPLIER);
-
-    // Set rotation direction based on configuration
-#if ROTATION_DIRECTION == ROTATION_DIRECTION_CCW
-    driver.shaft(0);  // CCW
-    DEBUG_PRINTLN("  Motor direction: Counter-clockwise");
-#else
-    driver.shaft(1);  // CW
-    DEBUG_PRINTLN("  Motor direction: Clockwise");
-#endif
+    configureDriver();
 
     // Initialize timer-based stepper
     stepper.begin();
@@ -118,7 +122,10 @@ void FilterWheel::init_hardware() {
 
 void FilterWheel::start() {
     init_hardware();
-    filterConfig.load();   // names / focus offsets; defaults (empty) if none stored
+    filterConfig.load();   // names / focus offsets / stall threshold / LED brightness; defaults if none stored
+    applyStallThreshold();
+    ledsSetBrightness(filterConfig.getLedBrightness());
+    housekeeping.begin();
     hallSensor.start();
     button.begin();
     buttonCCW.begin();
@@ -143,6 +150,9 @@ void FilterWheel::loop() {
     // Update stepper motion profile (must be called frequently)
     stepper.update();
 
+    // Stall / driver error detection, housekeeping sampling
+    watchMotion();
+
     // Process serial protocol commands
     if (protocol != nullptr) {
         protocol->process();
@@ -164,8 +174,8 @@ void FilterWheel::loop() {
         // ERROR: Both LEDs blink alternately (100ms interval)
         if (millis() - lastBlinkTime > 100) {
             led1State = !led1State;
-            digitalWrite(PIN_STATUS_LED1, led1State ? LOW : HIGH);      // Active LOW
-            digitalWrite(PIN_STATUS_LED2, led1State ? HIGH : LOW);      // Opposite of LED1
+            ledSet(LED1, led1State);
+            ledSet(LED2, !led1State);  // opposite of LED1
             lastBlinkTime = millis();
         }
     } else if (state == STATE_CALIBRATING) {
@@ -180,8 +190,8 @@ void FilterWheel::loop() {
 
         if (calibInPause) {
             // Pause between blink sequences (1 second)
-            digitalWrite(PIN_STATUS_LED1, HIGH);  // OFF
-            digitalWrite(PIN_STATUS_LED2, HIGH);  // OFF
+            ledSet(LED1, false);  // OFF
+            ledSet(LED2, false);  // OFF
             if (calibBlinkElapsed >= 1000) {
                 calibInPause = false;
                 calibBlinkCount = 0;
@@ -192,8 +202,8 @@ void FilterWheel::loop() {
             if (calibBlinkState) {
                 // LED is ON, turn OFF after 150ms
                 if (calibBlinkElapsed >= 150) {
-                    digitalWrite(PIN_STATUS_LED1, HIGH);  // OFF
-                    digitalWrite(PIN_STATUS_LED2, HIGH);  // OFF
+                    ledSet(LED1, false);  // OFF
+                    ledSet(LED2, false);  // OFF
                     calibBlinkState = false;
                     calibBlinkCount++;
                     calibBlinkStartTime = millis();
@@ -208,8 +218,8 @@ void FilterWheel::loop() {
                 // LED is OFF, turn ON after 150ms (if more blinks needed)
                 if (calibBlinkElapsed >= 150) {
                     if (calibBlinkCount < calibrationPass) {
-                        digitalWrite(PIN_STATUS_LED1, LOW);   // ON
-                        digitalWrite(PIN_STATUS_LED2, LOW);   // ON
+                        ledSet(LED1, true);   // ON
+                        ledSet(LED2, true);   // ON
                         calibBlinkState = true;
                         calibBlinkStartTime = millis();
                     }
@@ -224,7 +234,7 @@ void FilterWheel::loop() {
 
                 if (blinkLedState) {
                     // LED is ON, turn it OFF and decrement counter
-                    digitalWrite(PIN_STATUS_LED2, HIGH);  // OFF (active low)
+                    ledSet(LED2, false);
                     blinkLedState = false;
                     blinksRemaining--;
 
@@ -235,14 +245,14 @@ void FilterWheel::loop() {
                 } else {
                     // LED is OFF, turn it ON if we have blinks remaining
                     if (blinksRemaining > 0) {
-                        digitalWrite(PIN_STATUS_LED2, LOW);  // ON (active low)
+                        ledSet(LED2, true);
                         blinkLedState = true;
                     }
                 }
             }
         } else {
             // LED Status2: OFF when not blinking
-            digitalWrite(PIN_STATUS_LED2, HIGH);  // OFF (active low)
+            ledSet(LED2, false);
         }
 
         // LED Status1: Blinks during movement, solid when idle
@@ -250,12 +260,12 @@ void FilterWheel::loop() {
             static unsigned long led1BlinkTime = 0;
             if (millis() - led1BlinkTime > 200) {
                 led1State = !led1State;
-                digitalWrite(PIN_STATUS_LED1, led1State ? LOW : HIGH);
+                ledSet(LED1, led1State);
                 led1BlinkTime = millis();
             }
         } else {
             // Solid on when idle
-            digitalWrite(PIN_STATUS_LED1, LOW);  // ON (active low)
+            ledSet(LED1, true);
         }
     }
 
@@ -374,6 +384,7 @@ FwError FilterWheel::moveSteps(int32_t steps) {
     DEBUG_PRINTLN(" steps using stepper.move()");
 
     stepper.move(steps);
+    sgLast = sgMin = sgMax = -1;   // StallGuard statistics of this move (threshold tuning, :41)
 
     // Switch to step movement mode to track completion
     stepMovementMode = true;
@@ -421,16 +432,143 @@ uint8_t FilterWheel::getFlags() const {
     if (positionValid)         flags |= 0x02;
     if (buttonPressedDuringBoot) flags |= 0x04;
     if (eepromFault)           flags |= 0x08;
+    if (getWarnings())         flags |= 0x10;
     return flags;
+}
+
+uint8_t FilterWheel::getWarnings() const {
+    uint8_t w = 0;
+    if (housekeeping.v5Low()) w |= WARN_V5_LOW;
+    if (driverStatusValid && (driverStatus & TMC_OTPW)) w |= WARN_DRIVER_OTPW;
+#if HAS_TMC_INDEX
+    if (digitalRead(INDEX_PIN) == HIGH) w |= WARN_DRIVER_OTPW;   // INDEX = otpw, live during moves
+#endif
+    if (driverWasReset) w |= WARN_DRIVER_RESET;
+    if (!clockFromCrystal()) w |= WARN_NO_CRYSTAL;
+    return w;
+}
+
+int16_t FilterWheel::getDriverTempClass() const {
+    if (!driverStatusValid) return -1;
+    if (driverStatus & (1UL << 11)) return 157;
+    if (driverStatus & (1UL << 10)) return 150;
+    if (driverStatus & (1UL << 9))  return 143;
+    if (driverStatus & (1UL << 8))  return 120;
+    return 0;
+}
+
+FwError FilterWheel::setStallThreshold(uint8_t value) {
+    if (state == STATE_MOVING || state == STATE_HOMING || state == STATE_CALIBRATING) {
+        return FW_ERR_BUSY;
+    }
+    filterConfig.setStallThreshold(value);
+    applyStallThreshold();
+    return filterConfig.save() ? FW_OK : FW_ERR_EEPROM;
+}
+
+FwError FilterWheel::setLedBrightness(uint8_t percent) {
+    if (percent > 100) return FW_ERR_BAD_PARAM;
+    // the EEPROM write stalls the loop for a few ms: not while hall pulses are being timed
+    if (state == STATE_MOVING || state == STATE_HOMING || state == STATE_CALIBRATING) {
+        return FW_ERR_BUSY;
+    }
+    filterConfig.setLedBrightness(percent);
+    ledsSetBrightness(percent);
+    return filterConfig.save() ? FW_OK : FW_ERR_EEPROM;
+}
+
+void FilterWheel::configureDriver() {
+    driver.begin();
+#if HW_REV >= 2
+    driver.I_scale_analog(false);   // VREF is not connected: current reference from the internal 5VOUT
+#endif
+    driver.toff(TMC_TOFF);
+    driver.hold_multiplier(TMC_HOLD_MULTIPLIER);   // used by rms_current(), so set it first
+    driver.rms_current(DEFAULT_RUN_CURRENT_MA);
+    driver.microsteps(TMC_MICROSTEPS);
+    driver.pwm_autoscale(TMC_PWM_AUTOSCALE);
+
+    // Set rotation direction based on configuration
+#if ROTATION_DIRECTION == ROTATION_DIRECTION_CCW
+    driver.shaft(0);  // CCW
+    DEBUG_PRINTLN("  Motor direction: Counter-clockwise");
+#else
+    driver.shaft(1);  // CW
+    DEBUG_PRINTLN("  Motor direction: Clockwise");
+#endif
+#if HAS_TMC_INDEX
+    driver.index_otpw(true);        // INDEX pin shows the overtemperature prewarning
+#endif
+    applyStallThreshold();
+    driver.GSTAT(0x07);             // clear reset / drv_err / uv_cp flags
+}
+
+void FilterWheel::applyStallThreshold() {
+    uint8_t t = filterConfig.getStallThreshold();
+    driver.SGTHRS(t);
+    // StallGuard drives DIAG only while TSTEP <= TCOOLTHRS. TSTEP is the time between 1/256
+    // microsteps in clocks, so this enables it above STALL_MIN_SPEED full steps/s; 0 = never.
+    driver.TCOOLTHRS(t ? TMC_FCLK / (256UL * STALL_MIN_SPEED) : 0);
+}
+
+void FilterWheel::watchMotion() {
+    bool running = stepper.isRunning();
+    unsigned long now = millis();
+    if (running && !motorWasRunning) {
+        motionStartTime = now;
+        housekeeping.motionStarted();
+    }
+    motorWasRunning = running;
+    housekeeping.loop(running);
+
+    if (!running) {
+        diagEvent = false;
+        return;
+    }
+    if (now - motionStartTime <= STALL_BLANK_MS) {
+        diagEvent = false;   // StealthChop is still adapting; StallGuard is not reliable yet
+        return;
+    }
+
+    // DIAG: a stall pulse (latched by the ISR), a driver error or a driver reset (supply dip).
+    // It is only a stall if StallGuard is enabled and the driver is healthy and configured.
+    if (diagEvent || digitalRead(DIAG_PIN) == HIGH) {
+        diagEvent = false;
+        if (state == STATE_MOVING || state == STATE_HOMING || state == STATE_CALIBRATING) {
+            stepper.emergencyStop();
+            bool healthy = driver.test_connection() == 0 && !(driver.GSTAT() & TMC_GSTAT_RESET) &&
+                           !(driver.DRV_STATUS() & TMC_FAULT_MASK);
+            raiseError(healthy && filterConfig.getStallThreshold() ? FW_ERR_MOTOR_STALL : FW_ERR_MOTOR_DRIVER);
+            return;
+        }
+    }
+
+    // SG_RESULT samples for threshold tuning, only in :21 step moves (no hall timing to disturb)
+    if (stepMovementMode && now - lastSgSample >= SG_SAMPLE_MS) {
+        lastSgSample = now;
+        int16_t sg = (int16_t)driver.SG_RESULT();
+        sgLast = sg;
+        if (sgMin < 0 || sg < sgMin) sgMin = sg;
+        if (sg > sgMax) sgMax = sg;
+    }
 }
 
 bool FilterWheel::checkDriver() {
     lastDriverCheck = millis();
     if (driver.test_connection() != 0) {
         DEBUG_PRINTLN("ERROR: TMC2209 not answering");
+        driverStatusValid = false;
         return false;
     }
-    if (driver.DRV_STATUS() & TMC_FAULT_MASK) {
+    if (driver.GSTAT() & TMC_GSTAT_RESET) {
+        // The driver restarted (supply dip) and lost its configuration (current, microsteps, ...)
+        DEBUG_PRINTLN("WARNING: TMC2209 was reset, re-initialising");
+        configureDriver();
+        driverWasReset = true;
+    }
+    driverStatus = driver.DRV_STATUS();
+    driverStatusValid = true;
+    if (driverStatus & TMC_FAULT_MASK) {
         DEBUG_PRINTLN("ERROR: TMC2209 reports overtemp/short");
         return false;
     }
@@ -559,7 +697,7 @@ void FilterWheel::handleStateMoving() {
             blinksRemaining = currentSlot + 1;  // Slot 0 = 1 blink, Slot 1 = 2 blinks, etc.
             lastBlinkTime = millis();
             blinkLedState = false;  // Start with LED OFF
-            digitalWrite(PIN_STATUS_LED2, HIGH);  // Ensure LED is OFF to start
+            ledSet(LED2, false);  // Ensure LED is OFF to start
 
             return;
         }
@@ -657,7 +795,7 @@ void FilterWheel::handleStateHoming() {
             blinksRemaining = currentSlot + 1;  // Slot 0 = 1 blink, Slot 1 = 2 blinks, etc.
             lastBlinkTime = millis();
             blinkLedState = false;  // Start with LED OFF
-            digitalWrite(PIN_STATUS_LED2, HIGH);  // Ensure LED is OFF to start
+            ledSet(LED2, false);  // Ensure LED is OFF to start
 
             return;
         }

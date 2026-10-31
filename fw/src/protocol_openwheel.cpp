@@ -1,6 +1,7 @@
 // OpenWheel Protocol Implementation, version 2 (every command is acknowledged)
 #include "protocol_openwheel.h"
 #include "filterwheel.h"
+#include "housekeeping.h"
 
 // protoWrite() sends a complete response as one atomic write.
 // DTR gating is disabled at startup via CDC_enableDTR(false) in main.cpp,
@@ -358,6 +359,44 @@ void ProtocolOpenWheel::handleCommand() {
             if (!parsePair(params, a, b) || a < 0 || a >= MAX_SLOTS || b < -32768 || b > 32767) { sendError(FW_ERR_BAD_PARAM); break; }
             filterWheel->filterConfig.setFocusOffset((uint8_t)a, (int16_t)b);
             sendResult(filterWheel->filterConfig.save() ? FW_OK : FW_ERR_EEPROM);
+            break;
+
+        case 40:  // HOUSEKEEPING: H,<mcu temp 0.1C>,<vdda mV>,<+5V mV>,<+5V min mV>,<driver temp>,<warnings>
+            {
+                char buf[48];
+                int len = snprintf(buf, sizeof(buf), "H,%d,%u,%d,%d,%d,%u#",
+                                   (int)housekeeping.mcuTempDeciC(),
+                                   (unsigned)housekeeping.vddaMv(),
+                                   (int)housekeeping.v5Mv(),
+                                   (int)housekeeping.v5MinMv(),
+                                   (int)filterWheel->getDriverTempClass(),
+                                   (unsigned)filterWheel->getWarnings());
+                protoWrite((const uint8_t*)buf, (size_t)len);
+            }
+            break;
+
+        case 41:  // STALLGUARD: G,<threshold>,<last>,<min>,<max> (SG_RESULT of the last :21 step move)
+            {
+                char buf[40];
+                int len = snprintf(buf, sizeof(buf), "G,%u,%d,%d,%d#",
+                                   (unsigned)filterWheel->getStallThreshold(),
+                                   (int)filterWheel->sgLast, (int)filterWheel->sgMin, (int)filterWheel->sgMax);
+                protoWrite((const uint8_t*)buf, (size_t)len);
+            }
+            break;
+
+        case 42:  // Set stall threshold SGTHRS 0..255 (0 = off), stored in the EEPROM
+            if (!parseInt(params, a) || a < 0 || a > 255) { sendError(FW_ERR_BAD_PARAM); break; }
+            sendResult(filterWheel->setStallThreshold((uint8_t)a));
+            break;
+
+        case 43:  // Get status LED brightness 0..100 %
+            sendResponse(filterWheel->getLedBrightness());
+            break;
+
+        case 44:  // Set status LED brightness 0..100 % (0 = off), stored in the EEPROM
+            if (!parseInt(params, a) || a < 0 || a > 100) { sendError(FW_ERR_BAD_PARAM); break; }
+            sendResult(filterWheel->setLedBrightness((uint8_t)a));
             break;
 
         default:
