@@ -95,13 +95,17 @@ Main commands:
 | `:34#` / `:34,0#` | read / clear the sticky device error | `E,code#` / `OK#` |
 | `:36#` / `:37 N,name#` | get all filter names / set the name of slot N | `a,b,c#` / `OK#` |
 | `:38#` / `:39 N,offset#` | get all focus offsets / set the offset of slot N | `a,b,c#` / `OK#` |
+| `:40#` | health: MCU temperature, supplies, driver temperature, warnings | `H,...#` (see docs/PROTOCOL.md) |
+| `:41#` / `:42 N#` | stall detection: threshold and load readings / set threshold (0 = off) | `G,...#` / `OK#` |
+| `:43#` / `:44 N#` | status LED brightness 0..100 % (0 = off) / set it | number / `OK#` |
 | `:18#` / `:19#` | firmware version / name | text |
 | `:31#` | reboot into the DFU bootloader | `OK#` |
 
 **Status fields:** `state` 0 init, 1 idle, 2 moving, 3 homing, 4 calibrating, 5 error; `slot` is
 the current slot (`-1` while moving or when the position is unknown); `target` the slot of a move;
 `slots` the calibrated slot count (0 = not calibrated); `error` the sticky error code; `flags`
-bit 0 calibrated, bit 1 position known, bit 2 button held at boot, bit 3 EEPROM fault.
+bit 0 calibrated, bit 1 position known, bit 2 button held at boot, bit 3 EEPROM fault, bit 4 health
+warning (details with `:40#`).
 
 **Error codes:**
 
@@ -113,10 +117,10 @@ bit 0 calibrated, bit 1 position known, bit 2 button held at boot, bit 3 EEPROM 
 | 3 | calibration failed | 10 | unknown command |
 | 4 | EEPROM missing or write failed | 11 | malformed command |
 | 5 | motor driver (TMC2209) fault | 12 | not changeable at runtime |
-| 6 | no hall sensor pulse seen | | |
+| 6 | no hall sensor pulse seen | 13 | motor stalled (stall detection) |
 
-Codes 1 to 6 are device faults: the wheel signals them on the LEDs for 10 s and keeps the code until
-it is cleared with `:34,0#`. Codes 7 to 12 are only returned in the reply to a rejected command.
+Codes 1 to 6 and 13 are device faults: the wheel signals them on the LEDs for 10 s and keeps the code
+until it is cleared with `:34,0#`. Codes 7 to 12 are only returned in the reply to a rejected command.
 
 **Filter names and focus offsets** (`:36` to `:39`) are stored in the wheel's EEPROM, in their own
 region, so they survive a calibration reset and follow the wheel to any PC. A name has up to 15
@@ -131,9 +135,14 @@ with `:32#`, so there is no COM port to choose.
 - `Position` is `-1` while the wheel moves; faults are reported as ASCOM exceptions with a readable reason.
 - `Names` and `FocusOffsets` come from the wheel. The imaging software keeps its own filter list and
   can import these (NINA: clear its cached filter list after renaming).
-- Extra actions: `Status` (JSON), `Home`, `Halt`, `ClearError`, `Calibrate` (parameter `confirm`).
-- The setup dialog (gear icon in NINA) edits names and offsets, shows the live status and offers
-  Home, Halt, Clear error and Calibrate.
+- Extra actions: `Status` (JSON, including temperatures, supply voltages and warnings),
+  `Home`, `Halt`, `ClearError`, `Calibrate` (parameter `confirm`).
+- The setup dialog (gear icon in NINA) edits names and offsets, shows the live status and health
+  (temperatures, supply, warnings) and offers Home, Halt, Clear error and Calibrate. Stall detection
+  is set up there too: *Test move* measures the motor load and suggests a threshold, *Set* stores it
+  in the wheel (0 = off). The status LED brightness (0 = off, for dark sites) is set there as well.
+- Health warnings (low supply, driver overtemperature or reset, crystal not running) are written to
+  the log as they appear.
 - It is built so that a silent, garbage-sending or unplugged device never hangs the client: every call
   is bounded in time, a lost connection is retried in the background, and a move that never ends is halted.
 - Log file: `%LOCALAPPDATA%\OpenWheel\driver.log`.

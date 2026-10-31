@@ -25,7 +25,7 @@ assigned.
 
 ## Open items
 
-- Run the installer (`driver/ASCOM/installer/Output/OpenWheel-ASCOM-Setup-0.1.0.exe`, build with `ISCC.exe OpenWheel.iss`) and check install, uninstall and re-registration. It re-points the COM registration from `driver/ASCOM/dist/...` to `C:\Program Files (x86)\OpenWheel`.
+- Run the installer (`driver/ASCOM/installer/Output/OpenWheel-ASCOM-Setup-0.3.0.exe`, build with `ISCC.exe OpenWheel.iss`) and check install, uninstall and re-registration. It re-points the COM registration from `driver/ASCOM/dist/...` to `C:\Program Files (x86)\OpenWheel`.
 - Real fault tests not done: unplug the hall sensor (expect error 6 after about 30 s), motor driver fault (error 5), EEPROM fault (error 4).
 - Not agreed yet, ask before building: settings over the protocol (speed, direction, current), firmware-version check and DFU update helper in the driver, calibration wizard, per-slot centring offsets (the protocol only has the user offset of slot 0), INDI driver.
 - Known: the firmware turns one way only, so moving backwards takes a full lap (about 4.6 s vs 2.1 s).
