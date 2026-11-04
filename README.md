@@ -20,6 +20,7 @@ clients through the OpenWheel ASCOM driver.
 | `hw/` | KiCad schematic and PCB |
 | `cad/` | mechanical models (Solid Edge, STEP) |
 | `driver/ASCOM/` | ASCOM driver for NINA & co.: core library, COM local server, setup dialog, tests, installer script |
+| `driver/INDI/` | INDI driver for KStars/Ekos on Linux, wheel simulator, tests |
 | `tools/gui/` | small Python/Qt test GUI |
 | `tools/hwtest/` | pytest acceptance tests that run against a real board over USB |
 | `docs/` | protocol reference, USB IDs, pid.codes submission files |
@@ -156,6 +157,20 @@ OpenWheel.Ascom.Server.exe /regserver          # use /unregserver to remove it
 
 Tests: `dotnet test driver/ASCOM/OpenWheel.Core.Tests` (simulated misbehaving devices) and
 `conformu conformance ASCOM.OpenWheel.FilterWheel` ([ConformU](https://github.com/ASCOMInitiative/ConformU)).
+
+## INDI driver (KStars/Ekos on Linux)
+
+`driver/INDI` contains `indi_openwheel`, an `INDI::FilterWheel` driver for libindi 2.x (Raspberry Pi,
+Astroberry, StellarMate). It behaves like the ASCOM driver:
+
+- It finds the wheel by its USB ID and confirms it with `:32#`.
+- Filter names and focus offsets are stored in the wheel.
+- It shows the status and health of the wheel, and offers Home, Halt, Calibrate and Clear error.
+- Every command is bounded in time.
+
+It comes with a simulated wheel (`openwheel_sim`) and tests against it. Building, installing and the
+udev rule are described in [driver/INDI/README.md](driver/INDI/README.md). It has not been tested with
+the real wheel yet.
 
 ## Status
 
