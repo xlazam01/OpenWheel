@@ -33,6 +33,10 @@ TMC2209Stepper  driver(&Serial2, R_SENSE, DRIVER_ADDRESS);
 // StepperTimer stepper is now defined in stepper_timer.cpp
 HallSensor      hallSensor(PIN_HALL, PIN_STATUS_LED2);
 
+bool FilterWheel::isHallActive() const {
+    return hallSensor.isMagnetPresent();
+}
+
 FilterWheel::FilterWheel() :
     sgLast(-1),
     sgMin(-1),

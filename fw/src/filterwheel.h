@@ -66,6 +66,10 @@ public:
   // Status LED brightness 0..100 % (0 = off), stored in the EEPROM
   FwError setLedBrightness(uint8_t percent);
   uint8_t getLedBrightness() const { return filterConfig.getLedBrightness(); }
+
+  // Live (debounced) Hall sensor state: true while a magnet switches the sensor.
+  // Valid in every state, also uncalibrated (magnet polarity check before gluing, :45).
+  bool isHallActive() const;
   int16_t sgLast, sgMin, sgMax;   // -1 = no sample
   // Sticky device fault (FW_OK if none). Stays set after the ERROR state ends until cleared.
   FwError getError() const { return lastError; }

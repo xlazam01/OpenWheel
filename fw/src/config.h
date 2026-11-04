@@ -5,7 +5,7 @@
 
 // Firmware information
 #define FIRMWARE_NAME    "OpenWheel"
-#define FIRMWARE_VERSION "FW1.2.0"
+#define FIRMWARE_VERSION "FW1.3.0"
 
 // Board revision (set by the PlatformIO environment)
 //   1 = prototype board: no +5V sense divider, TMC2209 INDEX not connected

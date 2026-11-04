@@ -399,6 +399,11 @@ void ProtocolOpenWheel::handleCommand() {
             sendResult(filterWheel->setLedBrightness((uint8_t)a));
             break;
 
+        case 45:  // Live Hall sensor state: 1 = magnet switches the sensor (south pole at the branded face), else 0.
+                  // Works in every state, also uncalibrated: magnet polarity check before gluing.
+            sendResponse(filterWheel->isHallActive() ? 1 : 0);
+            break;
+
         default:
             sendError(FW_ERR_UNKNOWN_CMD);
             break;

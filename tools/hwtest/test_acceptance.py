@@ -96,6 +96,21 @@ def test_5_move_all_slots(fw):
         cur = target
 
 
+def test_5b_hall_state(fw):
+    """:45# live Hall sensor state (FW1.3+): 0/1 while idle, and magnet pulses show up while the wheel turns."""
+    assert fw.get(45) in ("0", "1")
+    far = fw.slots - 1 if fw.get_int(6) != fw.slots - 1 else 0
+    fw.cmd(f":07 {far}#")
+    seen = set()
+    t0 = time.time()
+    while time.time() - t0 < fw.move_timeout:
+        seen.add(fw.get(45))
+        if time.time() - t0 > 0.5 and not fw.moving():
+            break
+    assert seen <= {"0", "1"}, seen
+    assert "1" in seen, "no magnet seen by :45# during a move across the slots"
+
+
 def test_7_halt(fw):
     n = fw.slots
     far = (fw.get_int(6) + n // 2) % n

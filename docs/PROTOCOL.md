@@ -60,6 +60,7 @@ soon as the move has started; poll `:33#` (or `:06#`) for completion.
 | 41 | StallGuard threshold and readings | | `G,<threshold>,<last>,<min>,<max>#` |
 | 42 | set StallGuard threshold (stored in EEPROM) | 0..255, 0 = off | OK |
 | 43 / 44 | get / set status LED brightness (stored in EEPROM) | 0..100 %, 0 = off | value / OK |
+| 45 | live Hall sensor state (magnet polarity check) | | `1` switched / `0` not |
 
 ### Identify (`:32#`)
 
@@ -81,6 +82,15 @@ them dark (dark site). Default 100 %. Stored with the filter names (record versi
 record from older firmware is migrated without losing names, offsets or the stall threshold).
 `ERR,8` while the wheel moves (the EEPROM write would disturb the hall timing). Firmware 1.2+;
 older firmware answers `ERR,10`.
+
+### Hall sensor state (`:45#`)
+
+`1#` while a magnet switches the Hall sensor, else `0#` (the debounced state the firmware uses for
+its pulse timing, `HALL_IN` PA1, active low). Answers in every state, also when the wheel is not
+calibrated, so a builder can check the loose magnets before gluing them into the wheel: the A3144 is
+unipolar and switches only on a **south pole** at its branded face, so a magnet face that reads `1`
+is south and goes outward (toward the sensor). The ASCOM setup dialog polls it in its *Magnet
+polarity* check. Firmware 1.3+; older firmware answers `ERR,10`.
 
 ### Status (`:33#`)
 
