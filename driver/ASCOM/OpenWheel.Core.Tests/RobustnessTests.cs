@@ -418,6 +418,49 @@ namespace OpenWheel.Core.Tests
             Assert.True(c2.Snapshot.IsConnected);
         }
 
+        // ------------------------------------------------------------ magnet polarity check (:45#, firmware 1.3)
+
+        [Fact]
+        public void HallStateFollowsTheSensorWhileUncalibrated()
+        {
+            var w = new FakeWheel { Uncalibrated = true, PositionKnown = false };
+            WheelController c = Connected(this, w);
+            Assert.False(c.Snapshot.Status.Calibrated);
+            bool active;
+            Assert.True(c.ReadHallState(out active).Success);
+            Assert.False(active);
+            w.HallActive = true;
+            Assert.True(c.ReadHallState(out active).Success);
+            Assert.True(active);
+            w.HallActive = false;
+            Assert.True(c.ReadHallState(out active).Success);
+            Assert.False(active);
+        }
+
+        [Fact]
+        public void HallStateOnOlderFirmwareIsUnknownCommandAndKeepsTheConnection()
+        {
+            var old = new FakeWheel { NoHallState = true, HallActive = true };   // firmware 1.2
+            WheelController c = Connected(this, old);
+            bool active;
+            CommandResult r = c.ReadHallState(out active);
+            Assert.False(r.Success);
+            Assert.False(active);
+            Assert.Equal((int)WheelError.UnknownCommand, r.ErrorCode);
+            Assert.True(c.Snapshot.IsConnected);
+        }
+
+        [Fact]
+        public void HallStateRejectsGarbage()
+        {
+            var w = new FakeWheel { HallReply = "2", HallActive = true };
+            WheelController c = Connected(this, w);
+            bool active;
+            Assert.False(c.ReadHallState(out active).Success);
+            Assert.False(active);
+            Assert.True(c.Snapshot.IsConnected);
+        }
+
         // ------------------------------------------------------------ filter names stored in the wheel
 
         [Fact]

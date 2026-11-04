@@ -276,6 +276,28 @@ namespace OpenWheel.Core
             return r;
         }
 
+        /// <summary>
+        /// Reads the live Hall sensor state (:45#, firmware 1.3+): true while a magnet switches the sensor,
+        /// i.e. a south pole is at its branded face. Works idle and uncalibrated (magnet polarity check
+        /// before gluing). A firmware without it answers "unknown command" (ErrorCode 10).
+        /// </summary>
+        public CommandResult ReadHallState(out bool active, int waitMs = 3000)
+        {
+            bool got = false;
+            CommandResult r = Submit(() =>
+            {
+                Reply rep = Send(Commands.GetHallState);
+                if (snapshot.Connection != ConnectionState.Connected) return CommandResult.Fail("connection lost");
+                if (rep.Kind == ReplyKind.Error) return Rejected(rep);
+                if (rep.Kind != ReplyKind.Value || (rep.Value != "0" && rep.Value != "1"))
+                    return CommandResult.Fail("no valid answer from the wheel");
+                got = rep.Value == "1";
+                return CommandResult.Ok;
+            }, waitMs, false);
+            active = r.Success && got;
+            return r;
+        }
+
         /// <summary>Sets the status LED brightness 0..100 % (0 = off); the wheel stores it in its EEPROM.</summary>
         public CommandResult SetLedBrightness(int percent, int waitMs = 3000)
         {

@@ -98,6 +98,7 @@ Main commands:
 | `:40#` | health: MCU temperature, supplies, driver temperature, warnings | `H,...#` (see docs/PROTOCOL.md) |
 | `:41#` / `:42 N#` | stall detection: threshold and load readings / set threshold (0 = off) | `G,...#` / `OK#` |
 | `:43#` / `:44 N#` | status LED brightness 0..100 % (0 = off) / set it | number / `OK#` |
+| `:45#` | live Hall sensor state, also uncalibrated (magnet polarity check) | `1#` switched / `0#` |
 | `:18#` / `:19#` | firmware version / name | text |
 | `:31#` | reboot into the DFU bootloader | `OK#` |
 
@@ -141,6 +142,8 @@ with `:32#`, so there is no COM port to choose.
   (temperatures, supply, warnings) and offers Home, Halt, Clear error and Calibrate. Stall detection
   is set up there too: *Test move* measures the motor load and suggests a threshold, *Set* stores it
   in the wheel (0 = off). The status LED brightness (0 = off, for dark sites) is set there as well.
+  *Magnet polarity* shows the live Hall sensor while a builder holds each loose magnet to it before
+  gluing: SWITCHED = south pole at the sensor, that face goes outward (firmware 1.3+, no calibration needed).
 - Health warnings (low supply, driver overtemperature or reset, crystal not running) are written to
   the log as they appear.
 - It is built so that a silent, garbage-sending or unplugged device never hangs the client: every call

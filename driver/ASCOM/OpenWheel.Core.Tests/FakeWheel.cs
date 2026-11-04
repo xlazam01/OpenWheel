@@ -56,6 +56,10 @@ namespace OpenWheel.Core.Tests
         public string StallReadings = "-1,-1,-1";
         public bool NoLedBrightness;           // firmware 1.1: ERR,10 to commands 43/44
         public int LedBrightness = 100;
+        public bool Uncalibrated;              // STATUS: flag bit0 clear, 0 slots (fresh board)
+        public bool NoHallState;               // firmware 1.2: ERR,10 to command 45
+        public bool HallActive;                // :45# live Hall sensor state
+        public string HallReply;               // overrides the :45# reply (garbage tests)
         public Misbehavior Mode = Misbehavior.None;
         public int ReplyDelayMs = 0;
 
@@ -155,8 +159,8 @@ namespace OpenWheel.Core.Tests
         {
             Settle();
             int state = moving ? 2 : 1;
-            int flags = 1 | (PositionKnown ? 2 : 0) | (Warnings != 0 && !NoHousekeeping ? 16 : 0);
-            return string.Format("S,{0},{1},{2},{3},{4},{5}", state, moving ? -1 : Slot, moving ? target : -1, Slots, ErrorCode, flags);
+            int flags = (Uncalibrated ? 0 : 1) | (PositionKnown ? 2 : 0) | (Warnings != 0 && !NoHousekeeping ? 16 : 0);
+            return string.Format("S,{0},{1},{2},{3},{4},{5}", state, moving ? -1 : Slot, moving ? target : -1, Uncalibrated ? 0 : Slots, ErrorCode, flags);
         }
 
         private void Handle(string body)
@@ -211,6 +215,11 @@ namespace OpenWheel.Core.Tests
                 if (!int.TryParse(body.Substring(2).Trim(' ', ','), out pct) || pct < 0 || pct > 100) { Reply("ERR,7"); return; }
                 if (moving) { Reply("ERR,8"); return; }
                 LedBrightness = pct; Reply("OK"); return;
+            }
+            if (body == "45")
+            {
+                if (NoHousekeeping || NoLedBrightness || NoHallState) { Reply("ERR,10"); return; }
+                Reply(HallReply ?? (HallActive ? "1" : "0")); return;
             }
             if (body.StartsWith("21", StringComparison.Ordinal))
             {

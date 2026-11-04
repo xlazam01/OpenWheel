@@ -438,5 +438,8 @@ namespace OpenWheel.Core
             if (percent < 0 || percent > 100) throw new ArgumentOutOfRangeException("percent");
             return ":44 " + percent.ToString(CultureInfo.InvariantCulture) + "#";
         }
+
+        /// <summary>Live Hall sensor state (firmware 1.3+): "1#" while a magnet switches the sensor, else "0#".</summary>
+        public const string GetHallState = ":45#";
     }
 }

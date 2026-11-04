@@ -1,5 +1,5 @@
 // Setup dialog: choose the wheel, edit filter names and focus offsets, watch the live status and
-// health (temperatures, supply, warnings), tune stall detection, and run the few maintenance
+// health (temperatures, supply, warnings), tune stall detection, check the magnet polarity (live Hall sensor), and run the few maintenance
 // actions (home, halt, clear error, calibrate).
 using System;
 using System.Collections.Generic;
@@ -32,6 +32,10 @@ namespace OpenWheel.Ascom
         private readonly NumericUpDown numLed = new NumericUpDown { Minimum = 0, Maximum = 100, Increment = 5 };
         private readonly Button btnLedSave = new Button { Text = "Set" };
         private readonly Label lblLed = new Label { AutoSize = false };
+        private readonly Button btnHall = new Button { Text = "Start check" };
+        private readonly Label lblHall = new Label { AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, BorderStyle = BorderStyle.FixedSingle };
+        private readonly Label lblHallHelp = new Label { AutoSize = false };
+        private readonly Timer hallTimer = new Timer { Interval = 250 };
         private readonly Button btnOk = new Button { Text = "OK", DialogResult = DialogResult.OK };
         private readonly Button btnCancel = new Button { Text = "Cancel", DialogResult = DialogResult.Cancel };
         private readonly Timer timer = new Timer { Interval = 400 };
@@ -43,6 +47,7 @@ namespace OpenWheel.Ascom
         private int stallTestPhase;   // 0 none, 1 test move running, 2 homing afterwards
         private bool ledLoaded;       // brightness read from the wheel once connected
         private bool ledSupported = true;
+        private bool hallSupported = true;   // false once the wheel answered "unknown command" to :45#
 
         private const int StallTestSteps = 2000;
 
@@ -112,7 +117,24 @@ namespace OpenWheel.Ascom
             lblLed.ForeColor = Color.DimGray;
             Controls.AddRange(new Control[] { numLed, btnLedSave, lblLed });
             new ToolTip().SetToolTip(numLed, "Brightness of the wheel's status LEDs, stored in the wheel. 0 = off (dark site).");
-            y += 38;
+            y += 34;
+
+            // Magnet polarity check (:45#): the builder holds each loose magnet to the Hall sensor before gluing.
+            Controls.Add(new Label { Text = "Magnet polarity:", Left = 12, Top = y + 6, Width = 110 });
+            btnHall.SetBounds(125, y, 100, 28);
+            lblHall.SetBounds(231, y, 377, 28);
+            lblHall.Font = new Font(Font, FontStyle.Bold);
+            lblHall.Text = "Check not running";
+            lblHall.ForeColor = Color.DimGray;
+            y += 32;
+            lblHallHelp.SetBounds(12, y, 596, 46);
+            lblHallHelp.ForeColor = Color.DimGray;
+            lblHallHelp.Text = "Before gluing: no rim magnet at the sensor. Hold each magnet flat against the Hall sensor's branded " +
+                               "(lettered) face. SWITCHED = the face touching the sensor is the south pole: mark it, it goes OUTWARD " +
+                               "(toward the sensor). Not switched = flip the magnet. All 10 magnets must face the same way.";
+            Controls.AddRange(new Control[] { btnHall, lblHall, lblHallHelp });
+            new ToolTip().SetToolTip(btnHall, "Shows the live state of the wheel's Hall sensor (A3144, switches only on a south pole). Works without calibration.");
+            y += 52;
 
             btnHome.SetBounds(12, y, 80, 28);
             btnHalt.SetBounds(98, y, 80, 28);
@@ -136,6 +158,8 @@ namespace OpenWheel.Ascom
             btnStallSave.Click += OnStallSave;
             btnStallTest.Click += OnStallTest;
             btnLedSave.Click += OnLedSave;
+            btnHall.Click += (s, e) => { if (hallTimer.Enabled) StopHallCheck(null); else StartHallCheck(); };
+            hallTimer.Tick += (s, e) => PollHall();
             btnOk.Click += OnOk;
             timer.Tick += (s, e) => RefreshStatus();
 
@@ -143,6 +167,7 @@ namespace OpenWheel.Ascom
             FormClosed += (s, e) =>
             {
                 timer.Stop();
+                hallTimer.Stop();
                 if (acquired) { acquired = false; Server.ReleaseConnection(); }
             };
         }
@@ -214,6 +239,7 @@ namespace OpenWheel.Ascom
             cmbMove.Enabled = ready && !st.Busy;
             UpdateStall(s, ready);
             UpdateLed(s, ready);
+            UpdateHall(s, ready);
 
             int slots = ready ? st.Slots : 0;
             bool onWheel = s.FilterConfigSupported;
@@ -305,6 +331,58 @@ namespace OpenWheel.Ascom
             if (ready && !usable) lblLed.Text = "Needs firmware 1.2 or newer.";
             numLed.Enabled = usable && !s.Status.Busy;
             btnLedSave.Enabled = usable && !s.Status.Busy;
+        }
+
+        // ------------------------------------------------------------ magnet polarity check (:45#, firmware 1.3+)
+
+        private void UpdateHall(WheelSnapshot s, bool ready)
+        {
+            if (!ready) hallSupported = true;   // another wheel / firmware may be plugged in next
+            bool usable = ready && hallSupported && !s.Status.Busy;
+            if (hallTimer.Enabled && !usable)
+                StopHallCheck(!ready ? "Check stopped: wheel not connected" : s.Status.Busy ? "Check stopped: wheel is moving" : null);
+            btnHall.Enabled = usable;
+            if (ready && !hallSupported) ShowHall("Needs firmware 1.3 or newer", Color.DimGray, SystemColors.Control);
+        }
+
+        private void StartHallCheck()
+        {
+            btnHall.Text = "Stop check";
+            hallTimer.Start();
+            PollHall();
+        }
+
+        private void StopHallCheck(string text)
+        {
+            hallTimer.Stop();
+            btnHall.Text = "Start check";
+            ShowHall(text ?? "Check not running", Color.DimGray, SystemColors.Control);
+        }
+
+        private void PollHall()
+        {
+            if (!hallTimer.Enabled) return;
+            bool active;
+            CommandResult r = Server.Controller.ReadHallState(out active, 1000);
+            if (r.Success)
+            {
+                if (active) ShowHall("SWITCHED - south pole at the sensor: this face goes OUTWARD", Color.White, Color.ForestGreen);
+                else ShowHall("not switched - no magnet or north pole: flip the magnet", Color.Black, Color.Gainsboro);
+            }
+            else if (r.ErrorCode == (int)WheelError.UnknownCommand)
+            {
+                hallSupported = false;
+                StopHallCheck("Needs firmware 1.3 or newer");
+                btnHall.Enabled = false;
+            }
+            else ShowHall("No answer from the wheel: " + r.Message, Color.DarkOrange, SystemColors.Control);
+        }
+
+        private void ShowHall(string text, Color fore, Color back)
+        {
+            lblHall.Text = text;
+            lblHall.ForeColor = fore;
+            lblHall.BackColor = back;
         }
 
         private void OnLedSave(object sender, EventArgs e)
