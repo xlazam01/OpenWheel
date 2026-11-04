@@ -1,0 +1,6 @@
+# OpenWheel filter wheel (pid.codes VID 0x1209, PID 0x2180; 0x0001 = test PID of development firmware).
+# - /dev/openwheel symlink (the first wheel); /dev/serial/by-id/ has a stable name per wheel anyway
+# - ModemManager must not probe the wheel: it sends AT commands to any new CDC ACM port
+# - readable/writable by the dialout group (the INDI user is usually in it)
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="2180", MODE="0660", GROUP="dialout", SYMLINK+="openwheel", ENV{ID_MM_DEVICE_IGNORE}="1"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1209", ATTRS{idProduct}=="0001", MODE="0660", GROUP="dialout", SYMLINK+="openwheel", ENV{ID_MM_DEVICE_IGNORE}="1"
