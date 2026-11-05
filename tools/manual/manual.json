@@ -1,0 +1,615 @@
+{
+  "title": "OpenWheel · build guide · DIY release 1",
+  "pages": [
+    {
+      "title": "OpenWheel",
+      "subtitle": "Build guide · DIY release 1 · 4 × 2\" filters",
+      "main": "p19a.dxf",
+      "note": "Parts: docs/BOM.md (P = printed, M = CNC plate, B = bought, E = electronics). Before you start: print the parts, order the plates and the PCB, and buy the hardware. Tools: hex keys 1.5 / 2 mm, micrometer or caliper, fine sandpaper on a flat plate, vice, soldering iron, USB-C cable."
+    },
+    {
+      "step": 1,
+      "title": "Standoffs",
+      "parts": [
+        {
+          "dxf": "p01.dxf",
+          "qty": 12,
+          "id": "B1",
+          "label": "standoff M3×15"
+        }
+      ],
+      "main": "p01.dxf",
+      "note": "File or sand both ends square until all 12 standoffs have the same length (micrometer). They set the 21 mm stack: unequal standoffs bend the plates and tilt the filters.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "All 12 within 0.02 mm"
+        },
+        {
+          "ok": false,
+          "text": "Lengths differ"
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "title": "Hall sensor and firmware",
+      "parts": [
+        {
+          "qty": 1,
+          "id": "E1",
+          "label": "PCB",
+          "tag": "PCB"
+        },
+        {
+          "qty": 1,
+          "id": "B14",
+          "label": "A3144",
+          "tag": "A3144"
+        }
+      ],
+      "main": "p02.dxf",
+      "note": "Solder the A3144 into the J4 pads from the back of the board (the side without parts): branded face (the narrow face with the bevelled edges and the marking) toward the wheel centre, so pin 1 (VCC) is on pad 1. Leads straight; the far end of the sensor 17 mm from the board. Then flash the firmware: hold CCW while plugging in USB (DFU), see the README.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Branded face toward the wheel centre, 17 mm from the board"
+        },
+        {
+          "ok": false,
+          "text": "Sensor turned round: pins 1 and 3 swapped"
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "title": "Magnets",
+      "parts": [
+        {
+          "dxf": "p03.dxf",
+          "qty": 1,
+          "id": "P2",
+          "label": "wheel"
+        },
+        {
+          "qty": 10,
+          "id": "B11",
+          "label": "magnet Ø6×3",
+          "tag": "Ø6×3"
+        }
+      ],
+      "main": "p03.dxf",
+      "note": "Board on USB, ASCOM setup dialog → Magnet polarity: hold each magnet to the sensor and mark the side that switches it. That side goes outward. Press the 10 magnets into the rim pockets in groups of 4, 3, 2 and 1, all the same way round, and glue them (CA glue). Let it cure.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "All marked sides face outward"
+        },
+        {
+          "ok": false,
+          "text": "One magnet reversed: that slot is never found"
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "title": "Shaft",
+      "parts": [
+        {
+          "dxf": "part_shaft.dxf",
+          "qty": 1,
+          "id": "B10",
+          "label": "shaft Ø5×20"
+        }
+      ],
+      "main": "p04.dxf",
+      "note": "Press the shaft into the wheel bore with a vice or an arbor press, straight, never with a hammer. The crush ribs in the bore hold it. The disc side of the wheel later faces the camera plate.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Wheel runs true when spun"
+        },
+        {
+          "ok": false,
+          "text": "Wheel wobbles"
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "title": "Camera plate bearing",
+      "parts": [
+        {
+          "dxf": "part_camplate.dxf",
+          "qty": 1,
+          "id": "M2",
+          "label": "camera plate"
+        },
+        {
+          "dxf": "part_shim10x14.dxf",
+          "qty": 1,
+          "id": "B8",
+          "label": "shim 10×14×0.3"
+        },
+        {
+          "dxf": "part_bearing.dxf",
+          "qty": 1,
+          "id": "B7",
+          "label": "MF105ZZ"
+        }
+      ],
+      "main": "p05.dxf",
+      "note": "From the inner side (no counterbores): shim, then the bearing with its flange on the shim. Glue the bearing if it sits loose (retaining compound).",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Bearing just below the outer face"
+        },
+        {
+          "ok": false,
+          "text": "Bearing sticks out of the outer face"
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "title": "Front plate bearing",
+      "parts": [
+        {
+          "dxf": "part_frontplate.dxf",
+          "qty": 1,
+          "id": "M1",
+          "label": "front plate"
+        },
+        {
+          "dxf": "part_shim10x14.dxf",
+          "qty": 1,
+          "id": "B8",
+          "label": "shim 10×14×0.3"
+        },
+        {
+          "dxf": "part_bearing.dxf",
+          "qty": 1,
+          "id": "B7",
+          "label": "MF105ZZ"
+        }
+      ],
+      "main": "p06.dxf",
+      "note": "Same as step 5, on the inner side of the front plate (the side without counterbores, shown from below).",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Bearing just below the outer face"
+        },
+        {
+          "ok": false,
+          "text": "Bearing sticks out of the outer face"
+        }
+      ]
+    },
+    {
+      "step": 7,
+      "title": "Standoffs on the camera plate",
+      "parts": [
+        {
+          "dxf": "p01.dxf",
+          "qty": 12,
+          "id": "B1",
+          "label": "standoff"
+        },
+        {
+          "dxf": "part_m3x8.dxf",
+          "qty": 8,
+          "id": "B2",
+          "label": "M3×8 low head",
+          "true_scale": true
+        }
+      ],
+      "main": "p07.dxf",
+      "note": "8 screws from the outer face into the 8 ring standoffs. The 4 standoffs at the motor box are only placed now: the front screws (step 17) and the motor-box screws (step 14) hold them.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Standoffs upright, screws flush in the counterbores"
+        },
+        {
+          "ok": false,
+          "text": "Screw head above the plate face"
+        }
+      ]
+    },
+    {
+      "step": 8,
+      "title": "Shell",
+      "parts": [
+        {
+          "dxf": "part_shell.dxf",
+          "qty": 1,
+          "id": "P1",
+          "label": "shell"
+        }
+      ],
+      "main": "p08.dxf",
+      "note": "Lower the shell over the standoffs until the plate sits in its recess. If the plate doesn't drop in without a gap, reprint the shell scaled 100.1–100.4 % in X/Y (Z 100 %).",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Plate sits in the recess, no gap"
+        },
+        {
+          "ok": false,
+          "text": "Gap or tilted plate: light leak"
+        }
+      ]
+    },
+    {
+      "step": 9,
+      "title": "Wheel (dry fit)",
+      "parts": [
+        {
+          "dxf": "part_shim5x7.dxf",
+          "qty": 2,
+          "id": "B9",
+          "label": "shim 5×7×0.5"
+        },
+        {
+          "dxf": "p03.dxf",
+          "qty": 1,
+          "id": "P2",
+          "label": "wheel with shaft"
+        }
+      ],
+      "main": "p09.dxf",
+      "note": "Shim, wheel with its disc side down (toward the camera plate), shim. First without filters: the next step fits the hub height.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Wheel sits centred on the bearing"
+        },
+        {
+          "ok": false,
+          "text": "Shim missing"
+        }
+      ]
+    },
+    {
+      "step": 10,
+      "title": "Dry fit: hub height",
+      "parts": [
+        {
+          "dxf": "part_frontplate.dxf",
+          "qty": 1,
+          "id": "M1",
+          "label": "front plate"
+        },
+        {
+          "dxf": "part_m3x8.dxf",
+          "qty": 12,
+          "id": "B2",
+          "label": "M3×8 low head",
+          "true_scale": true
+        }
+      ],
+      "main": "p10.dxf",
+      "note": "Screw the front plate on. The wheel must turn freely with no axial play. If it binds, take the plate off and sand the end of the hub flat on fine paper (12 mm → about 11.8 mm). Then take the front plate and the wheel out again.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Turns freely, no play"
+        },
+        {
+          "ok": false,
+          "text": "Binds (sand) or rattles (too much sanded)"
+        }
+      ]
+    },
+    {
+      "step": 11,
+      "title": "Filters",
+      "parts": [
+        {
+          "dxf": "part_filter.dxf",
+          "qty": 4,
+          "id": "B15",
+          "label": "2\" filter"
+        },
+        {
+          "dxf": "part_oring.dxf",
+          "qty": 12,
+          "id": "B6",
+          "label": "O-ring 2×1"
+        },
+        {
+          "dxf": "part_m2x6.dxf",
+          "qty": 12,
+          "id": "B5",
+          "label": "M2×6",
+          "true_scale": true
+        }
+      ],
+      "main": "p11.dxf",
+      "note": "Drop each filter into its seat. Three screws per filter, an O-ring under each head. Tighten gently: the screws cut their own thread in the plastic. Note which filter is in which numbered slot; the names are set later in the driver.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Filter can't rattle"
+        },
+        {
+          "ok": false,
+          "text": "Screw stripped: overtightened"
+        }
+      ]
+    },
+    {
+      "step": 12,
+      "title": "Friction roller",
+      "parts": [
+        {
+          "dxf": "p12.dxf",
+          "qty": 1,
+          "id": "B12",
+          "label": "NEMA11 pancake"
+        },
+        {
+          "qty": 1,
+          "id": "B13",
+          "label": "silicone tube",
+          "tag": "2×4 tube"
+        }
+      ],
+      "main": "p12.dxf",
+      "note": "Push a piece of 2×4 mm silicone tube over the Ø3 motor shaft and cut it flush with the shaft end. It is the roller that drives the wheel rim (not shown in the drawings).",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Tube tight, can't turn on the shaft"
+        },
+        {
+          "ok": false,
+          "text": "Tube longer than the shaft"
+        }
+      ]
+    },
+    {
+      "step": 13,
+      "title": "Motor into the box",
+      "parts": [
+        {
+          "dxf": "part_box.dxf",
+          "qty": 1,
+          "id": "P3",
+          "label": "motor box"
+        },
+        {
+          "dxf": "part_m3x8btn.dxf",
+          "qty": 2,
+          "id": "B4",
+          "label": "M3×8 button",
+          "true_scale": true
+        }
+      ],
+      "main": "p13.dxf",
+      "note": "Motor into the box with its flange toward the plate side (shown from below). The two ear screws go in from inside the box through the slots. Leave them loose.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Motor slides in its slots"
+        },
+        {
+          "ok": false,
+          "text": "Screw longer than 10 mm: it reaches the wheel"
+        }
+      ]
+    },
+    {
+      "step": 14,
+      "title": "Motor box on",
+      "parts": [
+        {
+          "dxf": "part_m3x16.dxf",
+          "qty": 4,
+          "id": "B3",
+          "label": "M3×16 button",
+          "true_scale": true
+        }
+      ],
+      "main": "p14.dxf",
+      "note": "Turn the stack over. Screw the box to the 4 motor-box standoffs from inside the box. The motor shaft with its roller now stands in the chamber next to the wheel position.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Box flat on the camera plate"
+        },
+        {
+          "ok": false,
+          "text": "Roller hits the shell"
+        }
+      ]
+    },
+    {
+      "step": 15,
+      "title": "Wheel in",
+      "parts": [
+        {
+          "dxf": "part_shim5x7.dxf",
+          "qty": 2,
+          "id": "B9",
+          "label": "shim 5×7×0.5"
+        },
+        {
+          "qty": 1,
+          "id": "P2",
+          "label": "wheel with filters",
+          "tag": "wheel"
+        }
+      ],
+      "main": "p15.dxf",
+      "note": "Turn the stack back. Shim, wheel with filters, shim, as in step 9.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Wheel sits on the bearing, turns by hand"
+        },
+        {
+          "ok": false,
+          "text": "Shim missing"
+        }
+      ]
+    },
+    {
+      "step": 16,
+      "title": "Set the motor",
+      "parts": [],
+      "main": "p15m.dxf",
+      "crop": [
+        0,
+        0.35,
+        0.6,
+        1
+      ],
+      "note": "Turn the stack over again. Push the motor in its slots toward the wheel until the roller presses on the wheel rim, and hold it there while you tighten the two ear screws from inside the box. Firm enough not to slip, light enough that the wheel still turns by hand.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Wheel turns by hand, roller rolls with it"
+        },
+        {
+          "ok": false,
+          "text": "Roller slips, or the wheel jams"
+        }
+      ]
+    },
+    {
+      "step": 17,
+      "title": "Front plate",
+      "parts": [
+        {
+          "dxf": "part_frontplate.dxf",
+          "qty": 1,
+          "id": "M1",
+          "label": "front plate"
+        },
+        {
+          "dxf": "part_m3x8.dxf",
+          "qty": 12,
+          "id": "B2",
+          "label": "M3×8 low head",
+          "true_scale": true
+        }
+      ],
+      "main": "p16.dxf",
+      "note": "Tighten the screws crosswise. Filters are changed later the same way: front plate off, 12 screws (reachable with an OAG or adapter mounted).",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Wheel turns freely by hand"
+        },
+        {
+          "ok": false,
+          "text": "Wheel touches a standoff"
+        }
+      ]
+    },
+    {
+      "step": 18,
+      "title": "Motor wires and PCB",
+      "parts": [
+        {
+          "qty": 1,
+          "id": "E1",
+          "label": "PCB",
+          "tag": "PCB"
+        },
+        {
+          "dxf": "part_m2x6.dxf",
+          "qty": 3,
+          "id": "B5",
+          "label": "M2×6",
+          "true_scale": true
+        }
+      ],
+      "main": "p17.dxf",
+      "crop": [
+        0,
+        0.3,
+        0.55,
+        1
+      ],
+      "note": "Solder the 4 motor wires to the J3 pads on the component side; cut the pins flush on the back (the board sits 0.3 mm above the motor). Lower the board onto the 3 bosses, components toward the lid, guiding the Hall sensor through the box and the plate slot. 3 screws. The sensor reaches about 4 mm into the chamber, next to the wheel rim.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Sensor passes the slot straight"
+        },
+        {
+          "ok": false,
+          "text": "Sensor bent or pinched"
+        }
+      ]
+    },
+    {
+      "step": 19,
+      "title": "Lid",
+      "parts": [
+        {
+          "dxf": "p18b.dxf",
+          "qty": 1,
+          "id": "P4",
+          "label": "lid"
+        }
+      ],
+      "main": [
+        {
+          "dxf": "p18a.dxf"
+        },
+        {
+          "dxf": "p18b.dxf",
+          "dx": 0,
+          "dy": -45
+        }
+      ],
+      "crop": [
+        0,
+        0.25,
+        0.6,
+        1
+      ],
+      "note": "Clip the lid on: + (CW) and − (CCW) pads over the buttons, USB-C opening over the socket.",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Both pads click and spring back"
+        },
+        {
+          "ok": false,
+          "text": "A pad stays pressed"
+        }
+      ]
+    },
+    {
+      "step": 20,
+      "title": "Done: power up and calibrate",
+      "main": [
+        {
+          "dxf": "p19a.dxf"
+        },
+        {
+          "dxf": "p19b.dxf",
+          "dx": 0,
+          "dy": -175
+        }
+      ],
+      "note": "Plug in USB-C. Calibrate once: long press CW (or hold CW while plugging in). The wheel turns, finds the magnets and stores 4 slots. Then install the ASCOM or INDI driver and name the filters (user manual).",
+      "checks": [
+        {
+          "ok": true,
+          "text": "Calibration finds 4 slots"
+        },
+        {
+          "ok": false,
+          "text": "Both LEDs blink: error, see the user manual"
+        }
+      ]
+    }
+  ]
+}
