@@ -25,7 +25,7 @@ static volatile bool diagEvent = false;
 static void onDiagRise() { diagEvent = true; }
 
 // External C function for bootloader jump
-extern "C" void JumpToBootloader(void);
+extern "C" void enterBootloader(void);  // bootloader.c
 
 // Global hardware objects
 HardwareSerial  Serial2(USART2);
@@ -1220,15 +1220,13 @@ void FilterWheel::handleButtonEvents() {
     }
 }
 
-// Reboot into DFU bootloader mode
-// This directly jumps to the STM32 system bootloader
+// Reboot into DFU bootloader mode (bootloader.c: magic flag + reset, see docs/BOOTLOADER.md)
 void FilterWheel::rebootToDFU() {
-    DEBUG_PRINTLN("Jumping to DFU bootloader...");
+    DEBUG_PRINTLN("Rebooting to DFU bootloader...");
 
     // Small delay to ensure serial transmission completes
     delay(100);
 
-    // Jump directly to STM32 system bootloader
-    // This function performs all necessary cleanup and jumps to bootloader
-    JumpToBootloader();
+    enterBootloader();  // does not return (unless the flag RAM is not reserved)
+    DEBUG_PRINTLN("DFU flag RAM not reserved, staying in firmware");
 }

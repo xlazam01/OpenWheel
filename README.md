@@ -50,7 +50,8 @@ pio run -d fw -e STM32G0B1 -t upload       # flash over USB (DFU)
 
 - **Hold the CCW button while powering on.** The CCW button is wired to the **BOOT0** pin, so the
   STM32 starts its built-in USB DFU bootloader instead of the firmware.
-- On a running wheel the command `:31#` does the same without touching the button.
+- On a running wheel the command `:31#` does the same without touching the button (flag in RAM + reset, see
+  [docs/BOOTLOADER.md](docs/BOOTLOADER.md)).
 
 Open `fw/` (not the repository root) in VS Code with the PlatformIO extension.
 
