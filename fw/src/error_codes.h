@@ -21,5 +21,8 @@ enum FwError : uint8_t {
     FW_ERR_BAD_FORMAT      = 11,  // malformed or too long command line
     FW_ERR_NOT_SUPPORTED   = 12,  // command known but not changeable at runtime
     // Sticky device fault added after the rejections (numbers are never reused)
-    FW_ERR_MOTOR_STALL     = 13   // TMC2209 StallGuard: motor stalled while moving (jam, blocked wheel)
+    FW_ERR_MOTOR_STALL     = 13,  // TMC2209 StallGuard: motor stalled while moving (jam, blocked wheel)
+    // 14, 15: reserved (used by the sister AstroUniBoard family; codes stay aligned across both)
+    // Command rejection: identify first (same number and meaning as AstroUniBoard)
+    FW_ERR_NOT_IDENTIFIED  = 16   // host has not sent :32# since power-on or since it opened the port
 };

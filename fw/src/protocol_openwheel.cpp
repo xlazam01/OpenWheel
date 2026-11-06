@@ -1,4 +1,4 @@
-// OpenWheel Protocol Implementation, version 2 (every command is acknowledged)
+// OpenWheel Protocol Implementation, version 3 (every command is acknowledged; identify first)
 #include "protocol_openwheel.h"
 #include "filterwheel.h"
 #include "housekeeping.h"
@@ -44,14 +44,44 @@ static void deviceSerial(char* out, size_t len) {
     snprintf(out, len, "%08lX%04lX", (unsigned long)w0, (unsigned long)(w1 >> 16));
 }
 
+// ---- port-open detection (identify-first gate) ----------------------------
+// The host's USB CDC driver sends class requests when a program opens the port:
+// SET_LINE_CODING (baud/format) and SET_CONTROL_LINE_STATE (DTR/RTS). Windows usbser sends them
+// even when the program opens with DTR = false, so they mark "a new host session" without
+// gating on DTR. The stm32duino CDC code has no hook for them, so the USB core's setup-stage
+// entry is wrapped at link time (-Wl,--wrap=USBD_LL_SetupStage in platformio.ini).
+// Runs in the USB interrupt: it only sets a flag, process() clears the identified state.
+#if ENABLE_USB_CDC
+#include "usbd_def.h"
+static volatile bool usbPortOpened = false;
+
+extern "C" USBD_StatusTypeDef __real_USBD_LL_SetupStage(USBD_HandleTypeDef* pdev, uint8_t* psetup);
+extern "C" USBD_StatusTypeDef __wrap_USBD_LL_SetupStage(USBD_HandleTypeDef* pdev, uint8_t* psetup) {
+    // bmRequestType 0x21 = host-to-device, class, interface
+    // bRequest 0x20 = SET_LINE_CODING, 0x22 = SET_CONTROL_LINE_STATE
+    if (psetup[0] == 0x21 && (psetup[1] == 0x20 || psetup[1] == 0x22)) {
+        usbPortOpened = true;
+    }
+    return __real_USBD_LL_SetupStage(pdev, psetup);
+}
+#endif
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 ProtocolOpenWheel::ProtocolOpenWheel(FilterWheel* fw)
-    : filterWheel(fw), bufferIndex(0), inCommand(false), overflow(false) {
+    : filterWheel(fw), bufferIndex(0), inCommand(false), overflow(false), identified(false) {
     memset(cmdBuffer, 0, sizeof(cmdBuffer));
 }
 
 void ProtocolOpenWheel::process() {
+#if ENABLE_USB_CDC
+    // A host (re)opened the port: lock until it identifies again. Checked before reading the
+    // bytes, because the host sends the class requests before its first command.
+    if (usbPortOpened) {
+        usbPortOpened = false;
+        identified = false;
+    }
+#endif
     while (PROTOCOL_SERIAL.available() > 0) {
         char inChar = PROTOCOL_SERIAL.read();
 
@@ -91,6 +121,13 @@ void ProtocolOpenWheel::handleCommand() {
     const int cmdNum = (cmdBuffer[0] - '0') * 10 + (cmdBuffer[1] - '0');
     const char* params = &cmdBuffer[2];
     long a = 0, b = 0;
+
+    // Identify first: until the host has sent :32# (after power-on or opening the port), only
+    // ping and identify are accepted; everything else is rejected and does nothing.
+    if (!identified && cmdNum != 25 && cmdNum != 32) {
+        sendError(FW_ERR_NOT_IDENTIFIED);
+        return;
+    }
 
     switch (cmdNum) {
         case 0:  // Get index adjust (user offset of slot 0)
@@ -276,6 +313,7 @@ void ProtocolOpenWheel::handleCommand() {
                 int len = snprintf(buf, sizeof(buf), "OPENWHEEL,%s,%s,%d,%s#",
                                    DEVICE_MODEL, FIRMWARE_VERSION, PROTOCOL_VERSION, serial);
                 protoWrite((const uint8_t*)buf, (size_t)len);
+                identified = true;
             }
             break;
 
