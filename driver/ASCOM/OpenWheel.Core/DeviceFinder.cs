@@ -122,6 +122,9 @@ namespace OpenWheel.Core
         /// Stage 2: open the port and run :25# / :32#. Returns the identity or null when the port is
         /// not an OpenWheel (silent, wrong answer, old firmware). Never throws, never blocks longer
         /// than a few command timeouts.
+        /// This is the only way into a port: nothing but :25# and :32# is sent before it succeeds
+        /// (the port may belong to another device on the shared test PID 1209:0001, and protocol 3
+        /// firmware answers everything else with ERR,16 until it has been identified).
         /// </summary>
         public static WheelIdentity Identify(ILink link, int commandTimeoutMs, out string failure)
         {

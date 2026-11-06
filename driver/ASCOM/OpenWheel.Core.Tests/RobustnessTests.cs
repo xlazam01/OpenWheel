@@ -44,6 +44,9 @@ namespace OpenWheel.Core.Tests
             Assert.True(WheelIdentity.TryParse("OPENWHEEL,G0B1,FW1.0.1,2,207834924B31", out id));
             Assert.Equal("207834924B31", id.Serial);
             Assert.True(id.IsSupported);
+            Assert.True(WheelIdentity.TryParse("OPENWHEEL,G0B1,FW1.4.0,3,207834924B31", out id));
+            Assert.Equal(3, id.ProtocolVersion);
+            Assert.True(id.IsSupported);
             Assert.True(WheelIdentity.TryParse("OPENWHEEL,G0B1,FW0.9,1,AB", out id));
             Assert.False(id.IsSupported);
             Assert.False(WheelIdentity.TryParse("myFilterWheel", out id));
@@ -180,12 +183,26 @@ namespace OpenWheel.Core.Tests
         {
             var w = new FakeWheel { Mode = Misbehavior.Slow, ReplyDelayMs = 250 };
             var t = Make(w);
+            w.Identified = true;   // transport-level test: skip the identify handshake
             Assert.Equal(ReplyKind.Timeout, t.Execute(Commands.Ping, 100).Kind);   // reply arrives later
             w.Mode = Misbehavior.None;
             Thread.Sleep(300);                                                       // stale "OK#" is now waiting
             Reply r = t.Execute(Commands.Status, 200);                               // must be the status, not the stale OK
             Assert.Equal(ReplyKind.Value, r.Kind);
             Assert.StartsWith("S,", r.Value);
+        }
+
+        [Fact]
+        public void LockedWheelAnswersNotIdentifiedUntilIdentify()
+        {
+            var w = new FakeWheel();
+            var t = Make(w);
+            Reply r = t.Execute(Commands.Status, 200);
+            Assert.Equal(ReplyKind.Error, r.Kind);
+            Assert.Equal((int)WheelError.NotIdentified, r.ErrorCode);
+            Assert.True(t.Execute(Commands.Ping, 200).IsOk);
+            Assert.Equal(ReplyKind.Value, t.Execute(Commands.Identify, 200).Kind);
+            Assert.StartsWith("S,", t.Execute(Commands.Status, 200).Value);
         }
 
         [Fact]
@@ -594,6 +611,89 @@ namespace OpenWheel.Core.Tests
             c.Connect();
             Assert.False(c.WaitConnected(600));
             Assert.Contains("too old", c.Snapshot.Problem);
+        }
+
+        // ------------------------------------------------------------ identify first (#16)
+
+        [Fact]
+        public void NothingButPingAndIdentifyIsSentBeforeIdentify()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            Assert.Equal(0, w.ProtocolViolations);
+            int firstOther = w.Received.FindIndex(x => x != "25" && x != "32");
+            Assert.True(firstOther > w.Received.IndexOf("32"), string.Join(" ", w.Received));
+            Assert.True(c.MoveToSlot(1).Success);
+        }
+
+        [Fact]
+        public void ReconnectAfterUnplugIdentifiesBeforeAnythingElse()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            w.Unplug();
+            Assert.True(WaitFor(() => !c.Snapshot.IsConnected, 1000));
+            w.Received.Clear();
+            w.Replug();
+            Assert.True(WaitFor(() => c.Snapshot.IsConnected, 3000), "did not reconnect");
+            Assert.Equal(0, w.ProtocolViolations);
+            Assert.Contains("32", w.Received);
+        }
+
+        [Fact]
+        public void RecoveryAfterGarbageIdentifiesBeforeAnythingElse()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            w.Mode = Misbehavior.Garbage;
+            Assert.True(WaitFor(() => !c.Snapshot.IsConnected, 3000));
+            w.Relock();
+            w.Mode = Misbehavior.None;
+            Assert.True(WaitFor(() => c.Snapshot.IsConnected, 3000));
+            Assert.Equal(0, w.ProtocolViolations);
+        }
+
+        [Fact]
+        public void WheelThatLocksMidSessionIsIdentifiedAgainAndTheCommandRuns()
+        {
+            var w = new FakeWheel { MoveMs = 50 };
+            WheelController c = Connected(this, w);
+            w.Relock();
+            CommandResult r = c.MoveToSlot(2);
+            Assert.True(r.Success, r.Message);
+            Assert.True(WaitFor(() => c.Snapshot.Position == 2, 2000));
+            Assert.True(c.Snapshot.IsConnected);
+            Assert.Contains("identifying again", LogOf(c));
+        }
+
+        [Fact]
+        public void DifferentDeviceAfterRelockDropsTheConnection()
+        {
+            var w = new FakeWheel();
+            WheelController c = Connected(this, w);
+            w.Relock();
+            w.Serial = "OTHER0002";   // another wheel now answers on this port
+            // the poll gets ERR,16, the re-identify sees another serial: the connection is dropped
+            // (and a fresh connect, which identifies first, may then pick up the new wheel)
+            Assert.True(WaitFor(() => LogOf(c).Contains("different device"), 2000), LogOf(c));
+            Assert.Contains("connection lost", LogOf(c));
+            Assert.Equal(0, w.ProtocolViolations - 1);   // only the poll that met the lock
+        }
+
+        [Fact]
+        public void NotIdentifiedHasADescription()
+        {
+            Assert.Contains("identif", WheelErrors.Describe(16));
+            Assert.False(WheelErrors.IsFault(16));
+            Assert.Equal(16, (int)WheelError.NotIdentified);
+        }
+
+        [Fact]
+        public void ProtocolTwoWithoutLockStillConnects()
+        {
+            var w = new FakeWheel { ProtocolVersion = 2, Firmware = "FW1.3.0", IdentifyFirst = false };
+            WheelController c = Connected(this, w);
+            Assert.Equal(2, c.Snapshot.Identity.ProtocolVersion);
         }
 
         [Fact]
