@@ -25,6 +25,13 @@ NINA and other ASCOM clients, or from KStars/Ekos through INDI.
 | Host protocol | text commands `:NN[params]#`, 115200 baud, every command is answered |
 | USB ID | VID `0x1209` ([pid.codes](https://pid.codes)), PID see [docs/USB_IDS.md](docs/USB_IDS.md) |
 
+<p align="center">
+  <a href="docs/hw/pcb_iso.png"><img src="docs/hw/pcb_iso.png" width="32%" alt="PCB 3D view"></a>
+  <a href="docs/hw/pcb_top.png"><img src="docs/hw/pcb_top.png" width="32%" alt="PCB top"></a>
+  <a href="docs/hw/pcb_bottom.png"><img src="docs/hw/pcb_bottom.png" width="32%" alt="PCB bottom"></a>
+</p>
+<p align="center"><sub>Controller PCB (V3.1, rendered from <code>hw/filter_wheel.kicad_pcb</code>)</sub></p>
+
 ## Repository layout
 
 | Folder | Content |
