@@ -1,4 +1,4 @@
-// OpenWheel serial protocol (version 2): reply classification, parsers and command builders.
+// OpenWheel serial protocol (versions 2 and 3): reply classification, parsers and command builders.
 // Pure code without I/O or libindi, shared by the INDI driver, the simulator and the tests.
 // Reference: docs/PROTOCOL.md and driver/ASCOM/OpenWheel.Core/Protocol.cs.
 #pragma once
@@ -13,6 +13,8 @@ constexpr int MaxCommandBody = 46;   // characters between ':' and '#'
 constexpr int MaxLineLength  = 64;   // longest plausible reply line
 constexpr int MaxNameLength  = 15;
 constexpr int MaxSlots       = 9;
+// 2 = every command is acknowledged; 3 (firmware 1.4) = identify first: only :25/:32 are accepted
+// until :32# (ERR,16). The driver always identifies first, so both are supported.
 constexpr int MinProtocolVersion = 2;
 
 enum class WheelState { Init = 0, Idle = 1, Moving = 2, Homing = 3, Calibrating = 4, Error = 5 };
@@ -21,7 +23,9 @@ enum ErrorCode
 {
     ErrNone = 0, ErrHomeTimeout = 1, ErrMoveTimeout = 2, ErrCalibration = 3, ErrEeprom = 4,
     ErrDriver = 5, ErrNoHall = 6, ErrBadParam = 7, ErrBusy = 8, ErrNotCalibrated = 9,
-    ErrUnknownCommand = 10, ErrBadFormat = 11, ErrNotSupported = 12, ErrStalled = 13
+    ErrUnknownCommand = 10, ErrBadFormat = 11, ErrNotSupported = 12, ErrStalled = 13,
+    // 14, 15: used by the sister AstroUniBoard family only
+    ErrNotIdentified = 16
 };
 
 /// True for sticky device faults (1..6 and 13), false for command rejections.

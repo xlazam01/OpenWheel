@@ -49,6 +49,7 @@ static bool control(SimServer &s, const std::string &line)
     else if (c == "stuck") s.with([&](SimWheel &w) { w.setStuck(v != 0); });
     else if (c == "warn") s.with([&](SimWheel &w) { w.setWarnings(static_cast<int>(v)); });
     else if (c == "slots") s.with([&](SimWheel &w) { w.setSlotCount(static_cast<int>(v)); });
+    else if (c == "relock") s.with([&](SimWheel &w) { w.relock(); });
     else if (c == "show")
         s.with([&](SimWheel &w)
         {
@@ -76,7 +77,7 @@ int main(int argc, char **argv)
         else if (a == "--ms-per-slot") cfg.msPerSlot = std::atoi(next().c_str());
         else if (a == "--link") link = next();
         else if (a == "--control") fifo = next();
-        else if (a == "--old-firmware") { cfg.filterConfig = false; cfg.housekeeping = false; cfg.firmware = "FW1.0.1"; }
+        else if (a == "--old-firmware") { cfg.filterConfig = false; cfg.housekeeping = false; cfg.firmware = "FW1.0.1"; cfg.protocol = 2; cfg.identifyFirst = false; }
         else if (a == "--serial") cfg.serial = next();
         else { std::fprintf(stderr, "usage: %s [--slots N] [--ms-per-slot N] [--link PATH] [--control FIFO] [--old-firmware] [--serial S]\n", argv[0]); return 2; }
     }
