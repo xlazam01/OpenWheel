@@ -12,7 +12,9 @@ Argument: COM port (required; ask if missing). Optional words: `flash`, `full`.
 
 1. If `flash` was given, run the `/flash-fw <PORT>` procedure first and stop if it fails.
 2. Acceptance run (the gate for a "physically testable" build; moves the wheel):
-   `python -m pytest tools/hwtest --port <PORT> -v`
+   `python -m pytest tools/hwtest --port <PORT> -v` (or `--serial <USB serial>`, preferred when
+   several 1209:0001 boards are connected; the suite always finds the wheel by its USB serial,
+   also after reboots, and identifies before any other command)
    Prints `ACCEPTANCE PASSED/FAILED` and writes `tools/hwtest/reports/report-<time>.md`.
 3. If `full` was given, ask the user to confirm that resetting calibration and reflashing is OK,
    then add `--full --confirm-destructive`. Without that confirmation use `--full` alone (only the

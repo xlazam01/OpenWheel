@@ -1,12 +1,23 @@
 """
 FilterWheel Serial Communication Module
-Handles serial communication with the filter wheel using the OpenWheel protocol v2
+Handles serial communication with the filter wheel using the OpenWheel protocol
 (see docs/PROTOCOL.md): every command is answered with "<value>#", "OK#" or "ERR,<code>#".
+
+Identify first (protocol 3): after the port is opened the wheel accepts only :25# (ping) and
+:32# (identify); everything else answers ERR,16 until :32# has been sent. connect() therefore
+pings and identifies before anything else and refuses a port that is not an OpenWheel (other
+devices share the USB test PID 1209:0001). Port settings (timeout, DTR, RTS, baud) are set
+before open() and never changed afterwards: pyserial re-applies them on every assignment, which
+the wheel sees as a new session and locks itself again.
 """
+
+import time
 
 import serial
 import serial.tools.list_ports
 from typing import Optional, List, Dict
+
+READ_SLICE_S = 0.05      # fixed pyserial read timeout; longer waits loop over it
 
 
 class FilterWheelComm:
@@ -17,6 +28,7 @@ class FilterWheelComm:
         self.is_connected = False
         self.baud_rate = 115200
         self.last_error_code = 0
+        self.identity: Optional[Dict[str, str]] = None   # from :32# at connect
 
     def get_available_ports(self) -> List[str]:
         """Get list of available COM ports"""
@@ -24,25 +36,29 @@ class FilterWheelComm:
         return [port.device for port in ports]
 
     def connect(self, port: str) -> bool:
-        """Connect to filter wheel on specified port"""
+        """Connect to the filter wheel on the given port: ping, then identify. Nothing else is
+        sent before the port has identified itself as an OpenWheel."""
         try:
-            # Open without asserting DTR to prevent STM32 USB CDC from resetting
+            # All settings before open(); DTR not asserted (STM32 USB CDC could reset)
             self.serial_port = serial.Serial()
             self.serial_port.port = port
             self.serial_port.baudrate = self.baud_rate
-            self.serial_port.timeout = 1.0
+            self.serial_port.timeout = READ_SLICE_S
             self.serial_port.write_timeout = 1.0
             self.serial_port.dtr = False
+            self.serial_port.rts = False
             self.serial_port.open()
 
             # Flush any startup noise then verify device responds
             self.serial_port.reset_input_buffer()
             self.is_connected = True
-            for _ in range(3):
-                if self.ping():
-                    return True
-            self.disconnect()
-            return False
+            alive = any(self.ping() for _ in range(3))
+            self.identity = self.identify() if alive else None
+            if self.identity is None:
+                print(f"{port}: not an OpenWheel (no answer to ping or identify)")
+                self.disconnect()
+                return False
+            return True
         except Exception as e:
             print(f"Connection error: {e}")
             self.is_connected = False
@@ -54,8 +70,8 @@ class FilterWheelComm:
             self.serial_port.close()
         self.is_connected = False
 
-    def send_command(self, command: str) -> Optional[str]:
-        """Send command and return response"""
+    def send_command(self, command: str, timeout: float = 1.0) -> Optional[str]:
+        """Send command and return response (waits up to timeout seconds for the '#')"""
         if not self.is_connected or not self.serial_port:
             return None
 
@@ -67,12 +83,13 @@ class FilterWheelComm:
             self.serial_port.write(command.encode())
             self.serial_port.flush()
 
-            # Read response (terminated by #)
+            # Read response (terminated by #); never assign serial_port.timeout (relocks the wheel)
             response = ""
-            while True:
+            end = time.time() + timeout
+            while time.time() < end:
                 char = self.serial_port.read(1).decode('ascii', errors='ignore')
-                if not char:  # Timeout
-                    break
+                if not char:
+                    continue
                 response += char
                 if char == '#':
                     break
@@ -82,11 +99,11 @@ class FilterWheelComm:
             print(f"Communication error: {e}")
             return None
 
-    def send_command_no_response(self, command: str) -> bool:
+    def send_command_no_response(self, command: str, timeout: float = 1.0) -> bool:
         """Send a setter/action command and return True when the wheel answered OK#.
         (Name kept for the callers; protocol v2 acknowledges every command.)
         On ERR,<code># the code is stored in self.last_error_code."""
-        response = self.send_command(command)
+        response = self.send_command(command, timeout)
         if response == "OK#":
             self.last_error_code = 0
             return True
@@ -102,7 +119,7 @@ class FilterWheelComm:
         response = self.send_command(":32#")
         if response and response.endswith("#"):
             parts = response[:-1].split(",")
-            if len(parts) == 5 and parts[0] == "OPENWHEEL":
+            if len(parts) == 5 and parts[0] == "OPENWHEEL" and parts[4]:
                 return dict(zip(("model", "firmware", "protocol", "serial"), parts[1:]))
         return None
 
@@ -188,12 +205,7 @@ class FilterWheelComm:
 
     def set_base_offset(self, offset: int) -> bool:
         """Set base offset (:29 NNN#). The wheel answers OK# after the EEPROM write (~0.4 s)."""
-        old = self.serial_port.timeout
-        self.serial_port.timeout = 3.0
-        try:
-            return self.send_command_no_response(f":29 {offset}#")
-        finally:
-            self.serial_port.timeout = old
+        return self.send_command_no_response(f":29 {offset}#", timeout=3.0)
 
     def get_num_slots(self) -> Optional[int]:
         """Get number of filter slots (:16#)"""

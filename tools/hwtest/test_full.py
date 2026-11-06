@@ -39,12 +39,15 @@ def test_full_12_dfu_roundtrip(fw):
     root = Path(__file__).resolve().parents[2]
     if not (root / "fw/.pio/build/STM32G0B1/firmware.bin").exists():
         pytest.fail("no build: run 'pio run -d fw -e STM32G0B1' first")
-    pio = Path(os.environ["USERPROFILE"]) / ".platformio/penv/Scripts/pio.exe"
+    dfu_util = Path(os.environ["USERPROFILE"]) / ".platformio/packages/tool-dfuutil/bin/dfu-util.exe"
     version = fw.get(18)
-    fw.cmd(":31#")
+    fw.cmd(":31#")   # the session is identified (Wheel.open), so DFU is accepted
     fw.close()
     time.sleep(4)
-    r = subprocess.run([str(pio), "run", "-d", "fw", "-e", "STM32G0B1", "-t", "upload"], cwd=root,
+    # Flash only this wheel: the ROM DFU bootloader reports the same serial number as the firmware.
+    # Never "the first DFU device" (another board may be in DFU at the same time).
+    r = subprocess.run([str(dfu_util), "-d", "0483:df11", "-S", fw.usb_serial, "-a", "0",
+                        "-s", "0x08000000:leave", "-D", str(root / "fw/.pio/build/STM32G0B1/firmware.bin")],
                        capture_output=True, text=True, timeout=300)
     out = r.stdout + r.stderr
     assert "Download done" in out, out[-1500:]  # trailing 'get_status' error is expected
