@@ -25,8 +25,9 @@ struct SimConfig
     bool filterConfig = true;      // false: :36..:39 answer ERR,10 (old firmware)
     bool housekeeping = true;      // false: :40 answers ERR,10
     std::string serial = "3A00FF12ABCD";
-    std::string firmware = "FW1.2.0";
-    int protocol = 2;
+    std::string firmware = "FW1.4.0";
+    int protocol = 3;
+    bool identifyFirst = true;     // protocol 3: ERR,16 to all but :25/:32 until :32#
 };
 
 class SimWheel
@@ -55,6 +56,11 @@ class SimWheel
         /// Moves never finish (motor turns forever): for the driver's watchdog.
         void setStuck(bool s) { stuck = s; }
         void setWarnings(int w) { warnings = w; }
+        /// Locks again, as the firmware does when a host opens or reconfigures the port.
+        void relock() { identified = false; }
+        bool isIdentified() const { return identified; }
+        /// Commands other than :25/:32 received while locked.
+        int violations() const { return lockViolations; }
 
         SimConfig cfg;
 
@@ -71,6 +77,8 @@ class SimWheel
         int pendingFault = 0;
         bool stuck = false;
         int moveCount = 0;
+        bool identified = false;
+        int lockViolations = 0;
         std::vector<std::string> nameTab;
         std::vector<int> offTab;
 };

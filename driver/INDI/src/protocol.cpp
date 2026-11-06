@@ -72,6 +72,7 @@ std::string describeError(int code)
         case 11: return "malformed command";
         case 12: return "setting cannot be changed at runtime";
         case 13: return "motor stalled (wheel blocked or jammed)";
+        case 16: return "wheel is locked until the host identifies it (:32#)";
         default: return "unknown error code " + std::to_string(code);
     }
 }

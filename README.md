@@ -82,12 +82,15 @@ Full reference with every command: [docs/PROTOCOL.md](docs/PROTOCOL.md). In shor
   | `ERR,<code>#` | rejected, see error codes below |
 
 - **Slots are numbered from 0.** Parameters accept `:07 3#`, `:07,3#` and `:073#`.
+- **Identify first.** After power-on and each time a host opens the port, only `:25#` and `:32#`
+  are accepted; anything else answers `ERR,16` until `:32#` has been sent (protocol 3, firmware 1.4).
 
 Example session:
 
 ```text
 :25#        ->  OK#                                       ping
-:32#        ->  OPENWHEEL,G0B1,FW1.0.1,2,207834924B31#    identify: model, firmware, protocol version, serial
+:33#        ->  ERR,16#                                   not identified yet
+:32#        ->  OPENWHEEL,G0B1,FW1.4.0,3,207834924B31#    identify: model, firmware, protocol version, serial
 :33#        ->  S,1,0,-1,4,0,3#                           status: idle, slot 0, 4 slots, no error
 :07 2#      ->  OK#                                       start moving to slot 2
 :33#        ->  S,2,-1,2,4,0,3#                           moving (slot -1), target 2
@@ -100,7 +103,7 @@ Main commands:
 | Command | Purpose | Answer |
 |---|---|---|
 | `:25#` | ping | `OK#` |
-| `:32#` | identify (used for automatic detection) | `OPENWHEEL,model,firmware,protocol,serial#` |
+| `:32#` | identify (automatic detection; unlocks all other commands) | `OPENWHEEL,model,firmware,protocol,serial#` |
 | `:33#` | status | `S,state,slot,target,slots,error,flags#` |
 | `:06#` | current slot, `-1` while moving or unknown | number |
 | `:07 N#` | move to slot N | `OK#` |

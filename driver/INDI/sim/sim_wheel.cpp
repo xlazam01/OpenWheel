@@ -129,6 +129,11 @@ std::string SimWheel::handle(const std::string &body, long long now)
     if (!p.empty() && (p[0] == ' ' || p[0] == ',')) p = p.substr(1);
     long a = 0, b = 0;
     bool idle = st == 1;
+    if (cfg.identifyFirst && !identified && c != 25 && c != 32)
+    {
+        lockViolations++;
+        return errReply(16);
+    }
 
     switch (c)
     {
@@ -157,7 +162,9 @@ std::string SimWheel::handle(const std::string &body, long long now)
         case 30:
             if (st == 2 || st == 3 || st == 4) { st = 1; target = -1; posKnown = false; }
             return OK;
-        case 32: return "OPENWHEEL,G0B1," + cfg.firmware + "," + std::to_string(cfg.protocol) + "," + cfg.serial + "#";
+        case 32:
+            identified = true;
+            return "OPENWHEEL,G0B1," + cfg.firmware + "," + std::to_string(cfg.protocol) + "," + cfg.serial + "#";
         case 33: return status();
         case 34:
             if (p.empty()) return "E," + std::to_string(err) + "#";

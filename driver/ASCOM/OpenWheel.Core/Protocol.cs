@@ -31,7 +31,9 @@ namespace OpenWheel.Core
         UnknownCommand = 10,
         BadFormat = 11,
         NotSupported = 12,
-        MotorStall = 13
+        MotorStall = 13,
+        // 14, 15: used by the sister AstroUniBoard family only
+        NotIdentified = 16
     }
 
     public static class WheelErrors
@@ -57,6 +59,7 @@ namespace OpenWheel.Core
                 case 11: return "malformed command";
                 case 12: return "setting cannot be changed at runtime";
                 case 13: return "motor stalled (wheel blocked or jammed)";
+                case 16: return "wheel is locked until the host identifies it (:32#)";
                 default: return "unknown error code " + code.ToString(CultureInfo.InvariantCulture);
             }
         }
@@ -71,6 +74,8 @@ namespace OpenWheel.Core
         public string Serial { get; private set; }
 
         public const string Signature = "OPENWHEEL";
+        /// <summary>Oldest supported protocol. 2 = every command is acknowledged; 3 (firmware 1.4) adds
+        /// identify first (ERR,16 before :32#). The host always identifies first, so both work.</summary>
         public const int MinProtocolVersion = 2;
 
         /// <summary>Parses "OPENWHEEL,model,firmware,protocol,serial" (without the trailing '#').</summary>

@@ -6,6 +6,23 @@ import time
 import pytest
 
 
+def test_0_identify_first(fw):
+    """Protocol 3: after the port is opened only :25# and :32# are accepted until :32# (ERR,16)."""
+    fw.close()
+    fw.open_raw()   # a new host session: the wheel locks itself
+    try:
+        # no EEPROM setters here: if the lock were broken they would change the calibration
+        for cmd in (":33#", ":06#", ":18#", ":16#", ":99#", ":07 1#", ":20#"):
+            fw.err(cmd, 16)
+        assert fw.raw(":25#") == "OK#", "ping must work before identify"
+        fw.identify()
+        assert fw.status()["state"] in (1, 0, 5)
+        assert not fw.moving(), "a rejected command must not have started anything"
+    finally:
+        fw.close()
+        fw.open()
+
+
 def test_1_identity(fw):
     assert fw.raw(":25#") == "OK#"
     assert fw.get(19) == "OpenWheel"
@@ -13,7 +30,8 @@ def test_1_identity(fw):
     assert 1 <= fw.slots <= 16
     ident = fw.get(32).split(",")
     assert ident[0] == "OPENWHEEL" and len(ident) == 5, ident
-    assert ident[2] == fw.get(18) and int(ident[3]) >= 2 and ident[4], ident
+    assert ident[2] == fw.get(18) and int(ident[3]) >= 3 and ident[4], ident
+    assert ident[4].upper() == fw.usb_serial.upper(), "identify serial must equal the USB serial"
 
 
 def test_2_getters(fw):

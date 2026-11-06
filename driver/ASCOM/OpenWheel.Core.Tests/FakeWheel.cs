@@ -1,4 +1,4 @@
-// A simulated OpenWheel (protocol v2) that can misbehave in the ways real devices do.
+// A simulated OpenWheel (protocol v3, identify first) that can misbehave in the ways real devices do.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -41,8 +41,10 @@ namespace OpenWheel.Core.Tests
         public int ErrorCode = 0;
         public string Serial = "FAKE0001";
         public string Model = "G0B1";
-        public string Firmware = "FW1.0.1";
-        public int ProtocolVersion = 2;
+        public string Firmware = "FW1.4.0";
+        public int ProtocolVersion = 3;
+        public bool IdentifyFirst = true;      // protocol 3: ERR,16 to everything but :25/:32 until :32#
+        public bool Identified;                // cleared on Open() (the host opening the port) and by Relock()
         public bool OldFirmware;               // answers ERR,10 to :32#
         public bool StuckMoving;               // a started move never finishes
         public bool NoFilterConfig;            // firmware without name storage: ERR,10 to commands 36..39
@@ -66,6 +68,7 @@ namespace OpenWheel.Core.Tests
         // observation
         public readonly List<string> Received = new List<string>();
         public int HaltCount;
+        public int ProtocolViolations;         // commands other than :25/:32 received before :32#
 
         private int target = -1;
         private long moveEndMs;
@@ -79,7 +82,9 @@ namespace OpenWheel.Core.Tests
         public bool IsOpen { get { return open && !unplugged; } }
 
         public void Unplug() { lock (gate) { unplugged = true; } }
-        public void Replug() { lock (gate) { unplugged = false; open = false; rx.Clear(); } }
+        public void Replug() { lock (gate) { unplugged = false; open = false; Identified = false; rx.Clear(); } }
+        /// <summary>The firmware locks again, as when the host reconfigures the port (DTR, baud) mid-session.</summary>
+        public void Relock() { lock (gate) { Identified = false; } }
 
         public void Open()
         {
@@ -87,6 +92,7 @@ namespace OpenWheel.Core.Tests
             {
                 if (unplugged) throw new LinkException("device gone");
                 open = true;
+                Identified = false;   // the CDC requests sent on open lock the real firmware
             }
         }
         public void Close() { lock (gate) { open = false; } }
@@ -172,6 +178,13 @@ namespace OpenWheel.Core.Tests
             {
                 if (OldFirmware) { Reply("ERR,10"); return; }
                 Reply(string.Format("OPENWHEEL,{0},{1},{2},{3}", Model, Firmware, ProtocolVersion, Serial));
+                Identified = true;
+                return;
+            }
+            if (IdentifyFirst && !Identified)
+            {
+                ProtocolViolations++;
+                Reply("ERR,16");
                 return;
             }
             if (body == "33") { Reply(StatusLine()); return; }

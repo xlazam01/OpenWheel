@@ -1,7 +1,12 @@
-# Serial protocol (version 2)
+# Serial protocol (version 3)
 
 USB CDC serial port, 115200 8N1 (the baud rate is only nominal over USB). Do not assert DTR when
 opening the port on boards that reset on DTR; the firmware does not gate output on DTR.
+
+**Identify first (protocol 3).** After power-on, and again whenever a host opens the port, the wheel
+accepts only `:25#` (ping) and `:32#` (identify). Every other command answers `ERR,16` and does
+nothing. A `:32#` unlocks all commands until the port is opened again or the wheel resets. See
+[Identify](#identify-32) for the rule and the typical host sequence.
 
 ## Framing
 
@@ -43,12 +48,12 @@ soon as the move has started; poll `:33#` (or `:06#`) for completion.
 | 22 | reboot | | OK (then resets) |
 | 23 | write settings to EEPROM | | OK |
 | 24 | reset calibration to defaults (recalibrates on next boot) | | OK |
-| 25 | ping | | `OK#` |
+| 25 | ping (always accepted, also before identify) | | `OK#` |
 | 26 / 27 | get / set homing method | | 1 / `ERR,12` |
 | 28 / 29 | get / set base offset ("home found value") | steps | value / OK |
 | 30 | halt | | OK |
 | 31 | reboot into DFU bootloader | | OK (then resets) |
-| 32 | identify | | `OPENWHEEL,<model>,<firmware>,<protocol>,<serial>#` |
+| 32 | identify (always accepted; unlocks the other commands) | | `OPENWHEEL,<model>,<firmware>,<protocol>,<serial>#` |
 | 33 | status | | `S,<state>,<slot>,<target>,<slots>,<error>,<flags>#` |
 | 34 | read / clear sticky error | none / `0` | `E,<code>#` / OK |
 | 35 | start calibration | | OK |
@@ -64,8 +69,42 @@ soon as the move has started; poll `:33#` (or `:06#`) for completion.
 
 ### Identify (`:32#`)
 
-Example: `OPENWHEEL,G0B1,FW1.0.1,2,3A00FF12ABCD#`. A host should accept a port only if this parses and
+Example: `OPENWHEEL,G0B1,FW1.4.0,3,207834924B31#`. A host should accept a port only if this parses and
 the protocol version is supported. Used for automatic detection after matching the USB VID/PID.
+The serial is the same string as the USB serial number descriptor.
+
+**Identify first.** OpenWheel uses the shared pid.codes test PID `1209:0001`, like its sister
+device AstroUniBoard and other hobby devices, so a port found by VID/PID alone may be another
+device. Since protocol 3 (firmware 1.4) the wheel therefore rejects every command except `:25#` and
+`:32#` with `ERR,16` (not identified) until a host has sent `:32#`. The lock comes back:
+
+- at power-on and after every reset (`:22#`, `:31#`, watchdog, brown-out), and
+- when a host opens the port. The firmware detects this from the USB CDC class requests the host's
+  driver sends on open, `SET_LINE_CODING` and `SET_CONTROL_LINE_STATE`; it does **not** gate on DTR.
+  Measured on Windows 11 (usbser.sys, firmware 1.4 with request counters): between one session and
+  the next (close + open) the driver sent `SET_LINE_CODING` 2 to 4 times and
+  `SET_CONTROL_LINE_STATE` 2 to 5 times, with DTR = false as well as DTR = true, from .NET
+  `SerialPort` and from pyserial, so a new session always starts locked.
+
+Any later `SET_LINE_CODING` / `SET_CONTROL_LINE_STATE` locks the wheel again, so a host must set
+the baud rate, DTR and RTS **before** it identifies and must not change them afterwards. Pitfall:
+pyserial re-applies the whole port configuration (`SetCommState`) when `timeout`, `baudrate`,
+`dtr` or `rts` is assigned on an open port, which relocks the wheel; set them before `open()` and
+pass per-read timeouts another way. `SerialPort.ReadTimeout` / `WriteTimeout` in .NET do not send
+a request.
+
+Typical host sequence:
+
+1. Pick candidate ports by VID/PID (and, when reconnecting, by the USB serial number you saw before).
+2. Open at 115200 with DTR/RTS as you want them for the whole session.
+3. Send `:25#` until it answers `OK#` (the wheel boots for about 1.5 s after a reset).
+4. Send `:32#`; accept the port only if the reply starts with `OPENWHEEL,`, the protocol version is
+   supported and (when reconnecting) the serial matches. Close it otherwise, without sending
+   anything else.
+5. Now any command, e.g. `:33#` status, `:36#` names.
+6. After `:22#` / `:31#` or a USB drop, find the port again **by serial number** and start at 2.
+
+Firmware before 1.4 (protocol 2) has no lock; the same host sequence works with it.
 
 ### Filter names and focus offsets (`:36`..`:39`)
 
@@ -149,6 +188,8 @@ Source of truth: `fw/src/error_codes.h`.
 | 11 | bad format / line too long | rejection |
 | 12 | not changeable at runtime | rejection |
 | 13 | motor stalled (StallGuard) | sticky fault |
+| 14, 15 | not used by OpenWheel (AstroUniBoard uses them; codes stay aligned across both families) | |
+| 16 | not identified: send `:32#` first (protocol 3) | rejection |
 
 Sticky faults put the wheel into the error state for 10 s (both LEDs alternate), then back to idle;
 the code stays in `:33#` / `:34#` until cleared with `:34,0#`. Rejections appear only in the reply.

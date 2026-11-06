@@ -5,7 +5,7 @@
 
 // Firmware information
 #define FIRMWARE_NAME    "OpenWheel"
-#define FIRMWARE_VERSION "FW1.3.0"
+#define FIRMWARE_VERSION "FW1.4.0"
 
 // Board revision (set by the PlatformIO environment)
 //   1 = prototype board: no +5V sense divider, TMC2209 INDEX not connected
@@ -42,8 +42,10 @@
   #define DEBUG_PRINTF(...)
 #endif
 
-// Serial protocol: OpenWheel (":NN[params]#"), version 2 = every command is acknowledged
-#define PROTOCOL_VERSION 2
+// Serial protocol: OpenWheel (":NN[params]#")
+//   2 = every command is acknowledged
+//   3 = identify first: only :25# and :32# until the host has identified the device (ERR,16)
+#define PROTOCOL_VERSION 3
 #define DEVICE_MODEL     "G0B1"
 
 // Serial speed (UART builds; USB CDC ignores it)

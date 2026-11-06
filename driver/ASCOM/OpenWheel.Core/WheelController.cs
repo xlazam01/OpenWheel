@@ -126,6 +126,7 @@ namespace OpenWheel.Core
         // worker-thread-only state
         private ILink link;
         private Transport transport;
+        private WheelIdentity identity;    // of the connected wheel, to check a re-identify (ERR,16)
         private int consecutiveFailures;
         private int backoffMs;
         private long nextConnectAttemptMs;
@@ -430,6 +431,7 @@ namespace OpenWheel.Core
 
                     link = l;
                     transport = t;
+                    identity = id;
                     consecutiveFailures = 0;
                     backoffMs = opt.ReconnectMinMs;
                     busySinceMs = -1;
@@ -733,10 +735,23 @@ namespace OpenWheel.Core
         private Reply Send(string command, int timeoutMs = 0)
         {
             if (transport == null) return Reply.TimeoutReply;
+            int t = timeoutMs > 0 ? timeoutMs : opt.CommandTimeoutMs;
             Reply r;
             try
             {
-                r = transport.Execute(command, timeoutMs > 0 ? timeoutMs : opt.CommandTimeoutMs);
+                r = transport.Execute(command, t);
+                if (r.Kind == ReplyKind.Error && r.ErrorCode == (int)WheelError.NotIdentified)
+                {
+                    // The wheel locked itself again (it saw the port being reconfigured): identify it
+                    // once more, check it is still the same wheel, then repeat the command once.
+                    string why = ReIdentify();
+                    if (why != null)
+                    {
+                        LoseConnection(why);
+                        return Reply.TimeoutReply;
+                    }
+                    r = transport.Execute(command, t);
+                }
             }
             catch (LinkException ex)
             {
@@ -747,6 +762,19 @@ namespace OpenWheel.Core
             if (r.IsTransportFailure) RegisterFailure(r.Kind == ReplyKind.Timeout ? "wheel did not answer" : "wheel sent garbage");
             else consecutiveFailures = 0;
             return r;
+        }
+
+        /// <summary>Re-sends :32# after an ERR,16. Returns null when the same wheel answered, else the reason.</summary>
+        private string ReIdentify()
+        {
+            LogMsg("wheel answered 'not identified': identifying again");
+            Reply id = transport.Execute(Commands.Identify, opt.CommandTimeoutMs);
+            WheelIdentity again;
+            if (id.Kind != ReplyKind.Value || !WheelIdentity.TryParse(id.Value, out again))
+                return "wheel locked and did not identify again (" + id + ")";
+            if (identity != null && !string.Equals(again.Serial, identity.Serial, StringComparison.OrdinalIgnoreCase))
+                return "a different device answered on " + transport.Link.Name + " (serial " + again.Serial + ")";
+            return null;
         }
 
         private void RegisterFailure(string what)

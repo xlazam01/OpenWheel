@@ -384,6 +384,70 @@ TEST(old_firmware_without_names_or_housekeeping)
     CHECK(r.wheel.moveTo(1).ok);
 }
 
+// ===================================================================== identify first (#16)
+
+TEST(nothing_but_ping_and_identify_before_identify)
+{
+    Rig r;
+    REQUIRE(r.ok);
+    int v = -1;
+    r.sim.with([&](SimWheel &s) { v = s.violations(); });
+    CHECK_EQ(v, 0);
+    auto h = r.sim.history();
+    size_t idPos = 0;
+    while (idPos < h.size() && h[idPos] != "32") idPos++;
+    REQUIRE(idPos < h.size());
+    for (size_t i = 0; i < idPos; i++) CHECK(h[i] == "25");
+    CHECK_EQ(r.wheel.identity().protocol, 3);
+}
+
+TEST(locked_wheel_answers_err16)
+{
+    SimServer sim(fastSim());
+    std::string why;
+    REQUIRE(sim.start(why));
+    SerialLink l;
+    REQUIRE(l.open(sim.path(), why));
+    Reply s = l.execute(cmd::Status, 300);
+    CHECK(s.kind == Reply::Error && s.code == ErrNotIdentified);
+    CHECK(l.execute(cmd::Ping, 300).isOk());
+    CHECK(l.execute(cmd::Identify, 300).kind == Reply::Value);
+    CHECK(l.execute(cmd::Status, 300).kind == Reply::Value);
+    CHECK(describeError(16).find("identif") != std::string::npos);
+    CHECK(!isFault(16));
+}
+
+TEST(relock_mid_session_is_identified_again)
+{
+    Rig r;
+    REQUIRE(r.ok);
+    r.sim.with([](SimWheel &s) { s.relock(); });
+    Result m = r.wheel.moveTo(2);
+    CHECK(m.ok);
+    CHECK(waitFor(r.wheel, [&] { return r.wheel.status().state == WheelState::Idle && r.wheel.status().position() == 2; }, 3000));
+    CHECK(r.wheel.connected());
+}
+
+TEST(different_device_after_relock_drops_the_connection)
+{
+    Rig r;
+    REQUIRE(r.ok);
+    r.sim.with([](SimWheel &s) { s.relock(); s.cfg.serial = "OTHER0002"; });
+    CHECK(waitFor(r.wheel, [&] { return !r.wheel.connected(); }, 2000));
+    CHECK(r.wheel.problem().find("different device") != std::string::npos);
+}
+
+TEST(protocol2_without_lock_still_connects)
+{
+    SimConfig c = fastSim();
+    c.protocol = 2;
+    c.identifyFirst = false;
+    c.firmware = "FW1.3.0";
+    Rig r(c);
+    REQUIRE(r.ok);
+    CHECK_EQ(r.wheel.identity().protocol, 2);
+}
+
 TEST(unsupported_protocol_is_refused)
 {
     SimConfig c = fastSim();
@@ -490,6 +554,7 @@ TEST(framing_noise_is_ignored_by_the_simulator)
     REQUIRE(l.open(sim.path(), why));
     Reply rr = l.execute(":25#", 300);
     CHECK(rr.isOk());
+    CHECK(l.execute(":32#", 300).kind == Reply::Value);      // identify first (protocol 3)
     Reply s = l.execute(":33#", 300);
     Status st;
     CHECK(s.kind == Reply::Value && Status::parse(s.value, st));

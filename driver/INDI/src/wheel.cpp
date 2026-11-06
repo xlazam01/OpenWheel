@@ -12,6 +12,9 @@ long long monotonicMs()
     return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 
+// The only way into a port: nothing but :25# and :32# is sent before the identify succeeded (the
+// port may belong to another device on the shared test PID 1209:0001, and protocol 3 firmware
+// answers everything else with ERR,16 until it has been identified).
 bool Wheel::open(const std::string &port, std::string &why, int fd)
 {
     close();
@@ -78,7 +81,28 @@ int Wheel::nextServiceInMs() const
 Reply Wheel::send(const std::string &command, int timeoutMs)
 {
     if (!isConnected) return Reply::timeout();
-    Reply r = link.execute(command, timeoutMs > 0 ? timeoutMs : opt.commandTimeoutMs);
+    int t = timeoutMs > 0 ? timeoutMs : opt.commandTimeoutMs;
+    Reply r = link.execute(command, t);
+    if (!link.broken() && r.kind == Reply::Error && r.code == ErrNotIdentified)
+    {
+        // The wheel locked itself again (it saw the port being reconfigured): identify it once
+        // more, check it is still the same wheel, then repeat the command once.
+        say("wheel answered 'not identified': identifying again");
+        Reply i = link.execute(cmd::Identify, opt.commandTimeoutMs);
+        Identity again;
+        if (link.broken()) { lose("the wheel was disconnected (USB unplugged?)"); return Reply::timeout(); }
+        if (i.kind != Reply::Value || !Identity::parse(i.value, again))
+        {
+            lose("connection lost: wheel locked and did not identify again (" + i.toString() + ")");
+            return Reply::timeout();
+        }
+        if (again.serial != id.serial)
+        {
+            lose("connection lost: a different device answered (serial " + again.serial + ")");
+            return Reply::timeout();
+        }
+        r = link.execute(command, t);
+    }
     if (link.broken()) { lose("the wheel was disconnected (USB unplugged?)"); return Reply::timeout(); }
     if (r.isTransportFailure())
         registerFailure(r.kind == Reply::Timeout ? "wheel did not answer " + command : "wheel sent garbage to " + command);

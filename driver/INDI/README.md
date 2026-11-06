@@ -102,8 +102,9 @@ Scripts can use the same names, for example
 ## Trying it without hardware: the simulator
 
 `openwheel_sim` copies the firmware's protocol and state machine on a pseudo terminal: timed moves,
-homing, calibration, names and offsets with the firmware's rules, error codes, and sticky faults
-with the 10 s error state.
+homing, calibration, names and offsets with the firmware's rules, error codes, sticky faults
+with the 10 s error state, and identify first (protocol 3: `ERR,16` to everything but `:25#`/`:32#`
+until `:32#`).
 
 ```bash
 openwheel_sim --link /tmp/openwheel --control /tmp/openwheel.ctl &
@@ -121,6 +122,7 @@ a line to the control FIFO, for example `echo "failnext 6" > /tmp/openwheel.ctl`
 | `stuck 1` | moves never finish (watchdog) |
 | `warn 1` | housekeeping warning (bit 0 = +5 V low) |
 | `slots 0` | uncalibrated wheel |
+| `relock 1` | lock again, as the firmware does when the port is reopened (the driver identifies again) |
 | `show` | print the simulated state |
 | `unplug` | close the pty, as if the USB cable were pulled |
 
@@ -132,7 +134,7 @@ a line to the control FIFO, for example `echo "failnext 6" > /tmp/openwheel.ctl`
 cmake -S driver/INDI -B build-indi && cmake --build build-indi && (cd build-indi && ctest --output-on-failure)
 ```
 
-- `core` (`tests/test_core.cpp`, 26 cases) needs no libindi. It runs the session code against the
+- `core` (`tests/test_core.cpp`, 31 cases) needs no libindi. It runs the session code against the
   simulator over a real pty:
   - parsing
   - USB detection on a fake sysfs tree
@@ -141,6 +143,8 @@ cmake -S driver/INDI -B build-indi && cmake --build build-indi && (cd build-indi
     sending
   - faults and clear, watchdog
   - old firmware, wrong protocol version
+  - identify first: nothing but `:25#`/`:32#` before identify, `ERR,16`, re-identify after a
+    relock, a different device after a relock drops the connection
   - silence, garbage, lost `#`, late replies, unplug
 - `indiserver` (`tests/test_indiserver.sh`, 46 checks) runs `indiserver` with the driver against the
   simulator and drives it with `indi_setprop` / `indi_getprop`, the way Ekos would.
