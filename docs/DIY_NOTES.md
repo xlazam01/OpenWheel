@@ -324,8 +324,9 @@ Details in the [README](../README.md); the parts that matter while building:
 
 - The prototype shell was printed in **Prusament Galaxy Black**. Any opaque black filament works; the
   chamber must be light-tight.
-- Orientation, layer height, walls and supports are **not recorded yet** ([#5](https://github.com/xlazam01/OpenWheel/issues/5)).
-  Both the shell and the wheel are flat parts; print them on a face.
+- Orientation and the print-check results per part (bridges, thin spots) are in the
+  [release notes](../release/1.0.0/README.md#printing); no part needs supports. Layer height, walls and
+  infill are **not recorded yet** ([#20](https://github.com/xlazam01/OpenWheel/issues/20)).
 - Scale the shell in X/Y until the aluminium plates sit tight in the recesses (see [Plates](#plates)).
 - Check after printing: plates drop into the recesses, standoffs slide into the channels and tubes
   (0.1–0.2 mm clearance on the Ø5 standoffs), the wheel bore takes the shaft.
