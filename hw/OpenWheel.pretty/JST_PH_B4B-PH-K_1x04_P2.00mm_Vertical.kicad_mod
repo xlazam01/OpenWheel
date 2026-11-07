@@ -1,0 +1,231 @@
+(footprint "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "JST PH series connector, B4B-PH-K (http://www.jst-mfg.com/product/pdf/eng/ePH.pdf), generated with kicad-footprint-generator")
+	(tags "connector JST PH vertical")
+	(property "Reference" "REF**"
+		(at 3 -2.9 0)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "24ba48d0-06d3-43ee-863e-54940f81cc22")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical"
+		(at 3 4 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "67b2b996-c4b8-4565-8279-6f886b97639e")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "668fe235-dc8a-4332-b936-7dba9ab84175")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" "Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d2205ded-49b4-42f5-a166-39aa8e2caadb")
+		(effects
+			(font
+				(size 1.27 1.27)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "MPN" "JST B4B-PH-K"
+		(at 0 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "9dcc14e4-a718-443b-897b-863dbdcdf1cd")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property ki_fp_filters "Connector*:*_1x??_*")
+	(sheetname "/")
+	(sheetfile "filter_wheel.kicad_sch")
+	(attr through_hole dnp)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -2.45 -2.2)
+		(end -2.45 3.3)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "c69ccf91-67cd-4155-9591-9aae9606ea95")
+	)
+	(fp_line
+		(start -2.45 3.3)
+		(end 8.45 3.3)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "22230009-54d8-4196-bc04-b60a53784694")
+	)
+	(fp_line
+		(start 8.45 -2.2)
+		(end -2.45 -2.2)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "637a47a2-20a8-4103-8e2d-3a6529023658")
+	)
+	(fp_line
+		(start 8.45 3.3)
+		(end 8.45 -2.2)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(layer "F.CrtYd")
+		(uuid "8b3a7b75-0ab8-4634-90c5-901f43770b62")
+	)
+	(fp_line
+		(start -2.36 -2.11)
+		(end -2.36 -0.86)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "e9698cf0-a81c-4414-810e-534b41d60078")
+	)
+	(fp_line
+		(start -1.95 -1.7)
+		(end -1.95 2.8)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "ccba317e-1d20-4c8d-84e9-ff6214208e5b")
+	)
+	(fp_line
+		(start -1.95 2.8)
+		(end 7.95 2.8)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "0522f98d-2377-4921-a5b3-d62e9a634e0e")
+	)
+	(fp_line
+		(start -1.11 -2.11)
+		(end -2.36 -2.11)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "2ccf7ab8-c13c-4c02-9b7f-b35912c4a245")
+	)
+	(fp_line
+		(start 7.95 -1.7)
+		(end -1.95 -1.7)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "43bb6b11-88da-478a-b814-170416f6e104")
+	)
+	(fp_line
+		(start 7.95 2.8)
+		(end 7.95 -1.7)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+		(uuid "d7a3c037-9b45-4cc7-9704-c431a93a8478")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 3 1.5 0)
+		(layer "F.Fab")
+		(uuid "542d9918-9be5-4990-93d3-ec1b4b3d0680")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" thru_hole roundrect
+		(at 0 0)
+		(size 1.2 1.75)
+		(drill 0.75)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(roundrect_rratio 0.208333)
+		(uuid "a789cfbf-f829-40b8-8cba-6d30ec1fc011")
+	)
+	(pad "2" thru_hole oval
+		(at 2 0)
+		(size 1.2 1.75)
+		(drill 0.75)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "785488c7-7a0a-4b0c-b3ae-19267c893c1b")
+	)
+	(pad "3" thru_hole oval
+		(at 4 0)
+		(size 1.2 1.75)
+		(drill 0.75)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "1da89908-75fc-4b73-95d0-0ef128a76fac")
+	)
+	(pad "4" thru_hole oval
+		(at 6 0)
+		(size 1.2 1.75)
+		(drill 0.75)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(uuid "508ee66b-5ee0-4886-8fc5-2f0a0e37bef4")
+	)
+	(embedded_fonts no)
+	(model "${KIPRJMOD}/3dmodels/JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical.step"
+		(hide yes)
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)

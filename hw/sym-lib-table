@@ -1,4 +1,4 @@
 (sym_lib_table
 	(version 7)
-	(lib (name "OpenWheel")(type "KiCad")(uri "${KIPRJMOD}/openwheel.kicad_sym")(options "")(descr "OpenWheel project symbols"))
+	(lib (name "OpenWheel")(type "KiCad")(uri "${KIPRJMOD}/openwheel.kicad_sym")(options "")(descr "OpenWheel project symbols (packed)"))
 )
