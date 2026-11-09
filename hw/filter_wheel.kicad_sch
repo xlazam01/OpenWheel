@@ -6,8 +6,8 @@
 	(paper "A3")
 	(title_block
 		(title "OpenWheel filter wheel controller")
-		(date "2026-10-31")
-		(rev "1.0")
+		(date "2026-11-09")
+		(rev "3.2")
 		(company "OpenWheel")
 		(comment 1 "https://github.com/xlazam01/OpenWheel")
 		(comment 2 "Licence: CERN-OHL-S-2.0")

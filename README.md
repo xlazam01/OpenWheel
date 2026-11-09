@@ -30,7 +30,7 @@ NINA and other ASCOM clients, or from KStars/Ekos through INDI.
   <a href="docs/hw/pcb_top.png"><img src="docs/hw/pcb_top.png" width="32%" alt="PCB top"></a>
   <a href="docs/hw/pcb_bottom.png"><img src="docs/hw/pcb_bottom.png" width="32%" alt="PCB bottom"></a>
 </p>
-<p align="center"><sub>Controller PCB (V3.1, rendered from <code>hw/filter_wheel.kicad_pcb</code>)</sub></p>
+<p align="center"><sub>Controller PCB (V3.2, rendered from <code>hw/filter_wheel.kicad_pcb</code>)</sub></p>
 
 ## Repository layout
 
