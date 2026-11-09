@@ -52,6 +52,19 @@ Assembly: screw the housing on with four M3 through the front plate, put the pul
 screw the motor to the plate from below (heads in the counterbores), lay the belt over the sleeve and
 the pulley, then pull the plate away from the axis and tighten the four M3 plate screws.
 
+### Fasteners (bought, linked designs in this folder, placed in `ofw_triton_assembly.sc`)
+
+| Qty | Design | Part | Where | Fit |
+|---|---|---|---|---|
+| 4 | `ofw_triton_screw_din912_m3x30` | DIN 912 / ISO 4762 M3×30, stainless A2 | housing counterbores (floor 3 mm below the top) → front plate → M3×15 standoffs | **replaces** the DIY front-plate screws M3×8 at those four holes; 7 mm in the standoff, tip 1.75 mm short of the camera-side ISO 7380 M3×16 in the same standoff |
+| 4 | `ofw_triton_screw_iso7380_m3x16` | ISO 7380-1 M3×16 button head, stainless A2 | plate slots → Ø2.8 pilots in the housing (self-tapping) | 10.5 mm in the pilot (15 deep); head Ø5.7 clears the motor flange by 0.5 mm |
+| 4 | `ofw_triton_washer_din433_m3` | DIN 433 M3 washer 3.2/6 × 0.5, A2 | under the slot screws | Ø6, not DIN 125 (Ø7): Ø7 would touch the motor flange next to the slots |
+| 4 | `ofw_triton_screw_iso7380_m3x5` | ISO 7380-1 M3×5 button head, stainless A2 | motor screws from below, heads in the plate counterbores (seat on the 45° cone, 2.6 mm above the underside) | 2.6 mm into the motor; the 17HS08 drawing gives 2.5 mm min thread depth. If it bottoms, add a 0.3–0.5 mm shim washer under the head |
+
+Dimensions: ISO 4762 / ISO 7380-1 / DIN 433 nominal values (head Ø, height, socket), threads cosmetic.
+The housing and plate use OpenWheel's own "PETG red" look (`#c8201e`, as the motor box and lid); screws and
+washers are stainless A2 (satin stainless look).
+
 ## Deviations from the legacy parts
 
 - Housing bottom sits on the DIY front plate (z = 17.9, `z_fp`); the legacy housing started at 17.5.
