@@ -1,0 +1,24 @@
+Group,Item,Part,Qty,Spec / file,Source / search,Notes
+Printed parts,P1,Shell,1,cad/diy/ofw_diy_shell.3mf,,"Opaque black (prototype: Prusament Galaxy Black). Scale X/Y to fit the plates, see the build guide"
+Printed parts,P2,Wheel,1,cad/diy/ofw_diy_wheel.3mf,,Opaque black
+Printed parts,P3,Motor box,1,cad/diy/ofw_diy_motorbox.3mf,,"Any colour (prototype: red), on its plate-side face, no supports"
+Printed parts,P4,Motor box lid,1,cad/diy/ofw_diy_motorbox_lid.3mf,,"Same colour as the box, outer face down, no supports"
+CNC plates,M1,Front plate,1,cad/diy/ofw_diy_plate_front.step,,"JLCPCB CNC, aluminium 6061, 3 mm, matt black anodised. Threads: 1 × M48 × 0.75 (aperture), 6 × M2.5. Ask for ""deburr all edges"""
+CNC plates,M2,Camera plate,1,cad/diy/ofw_diy_plate_camera.step,,Same. Threads: 6 × M2.5
+Bought mechanical parts,B1,"Standoff M3 × 15, round",12,"Ø5, female–female, threaded ≥ 6.5 mm deep each end","https://www.aliexpress.com/item/1005004063804402.html, M3 round aluminium standoff female 15mm","Aluminium, black. File all 12 to the same length"
+Bought mechanical parts,B2,"Screw M3 × 8, flat low head",20,"Black, 12.9, hex 2, head Ø5.8 × 1.0",M3 ultra low head screw 12.9 black,"Plates to standoffs: 12 front, 8 camera"
+Bought mechanical parts,B3,"Screw M3 × 16, button head ISO 7380",4,Hex 2,ISO7380 M3x16 button head,Motor box to standoffs. Not shorter than 16
+Bought mechanical parts,B4,"Screw M3 × 8, button head ISO 7380",2,Hex 2,ISO7380 M3x8 button head,Motor ears. Not longer than 10 mm
+Bought mechanical parts,B5,"Self-tapping screw M2 × 6, socket cap",15,"For plastic, head Ø3.6 × 1.8, hex 1.5",M2x6 self tapping socket cap screw plastic,12 filter clamps + 3 PCB
+Bought mechanical parts,B6,O-ring 2 × 1 mm,12,"NBR, ID 2, cross-section 1",O ring 2x1mm NBR,One under each clamp screw head
+Bought mechanical parts,B7,Ball bearing MF105ZZ,2,"5 × 10 × 4, flange Ø11.2 × 0.8, shielded",MF105ZZ flange bearing,Flange on the chamber side
+Bought mechanical parts,B8,Shim washer 10 × 14 × 0.3,2,"DIN 988, stainless","https://www.aliexpress.com/item/1005002301164770.html, DIN988 shim 10x14x0.3",Under each bearing flange
+Bought mechanical parts,B9,Shim washer 5 × 7 × 0.5,2,"DIN 988, stainless","https://www.aliexpress.com/item/1005002301164770.html, DIN988 shim 5x7x0.5","On the shaft, between bearing and wheel"
+Bought mechanical parts,B10,Shaft Ø5 × 20 mm,1,"Stainless dowel pin, 304","https://www.aliexpress.com/item/4000473863693.html, stainless dowel pin 5x20",Press fit in the wheel
+Bought mechanical parts,B11,Magnet Ø6 × 3 mm,10,"NdFeB N35 or stronger, axially magnetised",neodymium magnet 6x3mm,Buy a few spare
+Bought mechanical parts,B12,Stepper motor NEMA11 pancake,1,"28 × 28 × 9.5 mm, round, 1.8°, 0.5 A, 1 Ncm, bipolar 4 wires, Ø3 mm shaft","https://www.aliexpress.com/item/4000182527052.html, nema 11 pancake stepper 9.5mm",Ears with M3 threads 34 mm apart
+Bought mechanical parts,B13,Silicone tube (friction drive),1 piece,"ID 2 × OD 4 mm, stretched over the Ø3 shaft, cut flush with the shaft end",silicone tube 2x4mm,"Pushed onto the motor shaft, runs on the wheel rim. No pulley, no belt"
+Bought mechanical parts,B14,Hall sensor A3144,1,"Unipolar, TO-92UA",A3144 hall sensor,"Soldered to the PCB, see the build guide"
+Bought mechanical parts,B15,"2"" filters, mounted",4,"Ø50.8 × 5 mm cell, M48 × 0.75 thread ≤ 2 mm",—,Low-profile cells. Unmounted glass: ? (#1)
+Bought mechanical parts,B16,Screws M2.5 for the camera,6 + 6,Length per camera / adapter,M2.5 socket cap screw,Camera side and telescope side
+Bought mechanical parts,B17,"Thread-locking / retaining compound, super glue",—,"e.g. Loctite 641 for loose bearings, CA glue for magnets",—,

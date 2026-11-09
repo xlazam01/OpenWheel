@@ -45,7 +45,7 @@ NINA and other ASCOM clients, or from KStars/Ekos through INDI.
 | `tools/hwtest/` | pytest acceptance tests that run against a real board over USB |
 | `tools/manual/` | generator for the build-guide pages (CAD view DXF → SVG/PDF) |
 | `docs/` | build guide, BOM, user manual, DIY notes, protocol reference, USB IDs |
-| `release/` | one folder per release: firmware binary, PCB fabrication files, CAD exports — latest [1.0.0](release/1.0.0/README.md) |
+| `release/` | one folder per release: firmware binary, PCB fabrication files, CAD exports — latest [1.1.0](release/1.1.0/README.md) |
 
 ## Build and flash
 
