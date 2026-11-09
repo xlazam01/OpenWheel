@@ -19,7 +19,8 @@ plate outer face z = 0, front plate outer face z = 21.0). The shell sits there a
 **+3.10**, because their `z_fp` = 17.9 is 0.05 mm short of the real front plate face (17.95 in the shell frame).
 The motor plate sits in its **belt-tensioned** position: moved 3.65 mm along the slots (motor axis 97.90 mm from
 the optical axis, for the 340 mm belt). Triton's system assembly (`Triton/cad/triton_assembly.sc`) links this file.
-In that assembly the belt rubs the plate's underside recess by 0.25 mm (recess 2.0 mm deep, needs ≥ 2.6).
+In that assembly the belt clears the plate's underside recess by 0.35 mm (recess 2.6 mm since 2026-11-09;
+the legacy 2.0 mm rubbed the belt by 0.25 mm).
 
 ## Shell horns
 
@@ -42,8 +43,8 @@ the parts of the working prototype:
   plate into the shell tubes), four Ø2.8 × 15 pilot holes for the plate screws, a pulley pocket
   (R7 stadium, 5 mm travel) and a V belt channel 6.1 mm deep that opens towards the optical axis.
 - **Plate**: 57 × 42 × 5 mm, NEMA17 boss hole Ø22 and 31 mm screw square (Ø6.5 counterbores from
-  below with a 45° roof), four M3 slots with 4.9 mm travel (`slot_len`), and a 2.0 mm V recess
-  underneath that continues the belt channel.
+  below with a 45° roof), four M3 slots with 4.9 mm travel (`slot_len`), and a 2.6 mm V recess
+  underneath that continues the belt channel (`rec_pl`).
 - **Belt**: GT2 closed **340 mm**, 120T sleeve / 12T pulley → centre distance 97.90 mm. The slots give
   93.8–98.7 mm (motor axis y = −55.8 … −60.7), so a 340 mm belt tensions near the far end of the slots.
 
@@ -58,6 +59,9 @@ the pulley, then pull the plate away from the axis and tighten the four M3 plate
 - Plate: the R10 blends where the underside recess meets the Ø22 hole are left out (+21 mm³), and
   the R1 rounds at the recess/counterbore cusps are straight 0.4 mm cuts (the kernel refused the
   tangent R1 cut). Volume 7564 mm³ vs 7547 mm³ legacy.
+- Plate recess **2.6 mm instead of the legacy 2.0** (2026-11-09): with the OAG between, the 340 mm belt
+  runs 0.25 mm higher than the 2.0 mm recess roof (Triton assembly). The cusp cuts stay at counterbore
+  depth (`min(rec_pl, mcb_d)`): at recess depth they left 0.01 mm slivers. Volume now 7363 mm³.
 - Housing: 65 132 mm³ vs 65 171 mm³ legacy (chamfers).
 
 ## Checks (2026-11-08)
@@ -66,4 +70,4 @@ the pulley, then pull the plate away from the axis and tighten the four M3 plate
 |---|---|---|---|---|---|
 | `ofw_triton_shell` | 41 610.0 | none | 0 open edges | `--up=+z`: no supports, 4 insert-hole bridges 3.1 mm | yes |
 | `ofw_triton_rot_housing` | 65 132.3 | none | 0 open edges | `--up=+z`: no supports, no bridges | yes |
-| `ofw_triton_motor_plate` | 7 564.0 | none | 0 open edges | `--up=-z`: no supports, no thin walls | yes |
+| `ofw_triton_motor_plate` (2026-11-09, recess 2.6) | 7 363.0 | none | 0 open edges | `--up=-z`: no supports, no thin walls | yes |
