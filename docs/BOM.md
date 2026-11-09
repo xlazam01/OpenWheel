@@ -60,11 +60,10 @@ wires and the Hall sensor are soldered to their pads. "Basic" parts cost no feed
 |---|---|---|---|---|
 | C1 | 4.7 nF | 0402 | C1538 | basic |
 | C2, C3, C10 | 1 µF | 0402 | C52923 | basic |
-| C4, C7, C8, C9, C13, C23, C25 | 100 nF | 0402 | C1525 | basic |
-| C5, C19 | 22 nF 50 V | 0402 | C1532 | basic |
+| C4, C7, C8, C9, C13, C14, C15, C20, C22, C23, C25 | 100 nF | 0402 | C1525 | basic |
+| C19 | 22 nF 50 V | 0402 | C1532 | basic |
 | C6, C16, C17, C21 | 10 µF 10 V | 0402 | C315248 | extended (no 10 V basic part) |
 | C11, C12 | 12 pF C0G | 0402 | C1547 | basic |
-| C14, C15, C20, C22 | 100 nF 50 V | 0402 | C307331 | basic |
 | C18 | 47 µF 10 V | 1206 | C96123 | basic |
 | C24 | 1 nF | 0402 | C1523 | basic |
 | D1, D2 | LED red | 0603 | C2286 | basic |
@@ -80,7 +79,7 @@ wires and the Hall sensor are soldered to their pads. "Basic" parts cost no feed
 | R19 | 100 Ω | 0402 | C25076 | basic |
 | SW2, SW3 | Tactile switch TS-1088-AR02016 | SMD 4 × 3 | C720477 | basic |
 | U1 | USBLC6-2SC6 (USB ESD) | SOT-23-6 | C2687116 | extended |
-| U2 | RT9193-33GB (3.3 V LDO) | SOT-23-5 | C15651 | extended |
+| U2 | ME6231A33M3G (3.3 V LDO, 500 mA; same part as AstroUniBoard U1) | SOT-23 | C2765181 | extended |
 | U3 | STM32G0B1CBT6 | LQFP-48 | C2847904 | extended; was out of stock at JLCPCB on 2026-11-04. The chip is common elsewhere (LCSC, Mouser, AliExpress, e.g. the WeAct Studio store, which also sells an STM32G0B1 core board): buy it there and consign it to JLCPCB, or solder it yourself |
 | U4 | 24AA64T-I/OT (EEPROM) | SOT-23-5 | C2061092 | extended |
 | U5 | TMC2209-LA-T (stepper driver) | QFN-28 | C2150710 | extended |
