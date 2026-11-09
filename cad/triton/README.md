@@ -13,6 +13,14 @@ telescope side +Z, shell from z = −2.9 to 17.8, front plate outer face at z = 
 
 Each design has its `.sc` (editable source), `.step` and `.3mf`.
 
+`ofw_triton_assembly.sc` is the Triton variant of the whole wheel: `../diy/ofw_diy_assembly.sc` with the shell
+relinked to `ofw_triton_shell`, plus the rotator housing and motor plate. It uses the DIY assembly frame (camera
+plate outer face z = 0, front plate outer face z = 21.0). The shell sits there at +3.05; housing and plate at
+**+3.10**, because their `z_fp` = 17.9 is 0.05 mm short of the real front plate face (17.95 in the shell frame).
+The motor plate sits in its **belt-tensioned** position: moved 3.65 mm along the slots (motor axis 97.90 mm from
+the optical axis, for the 340 mm belt). Triton's system assembly (`Triton/cad/triton_assembly.sc`) links this file.
+In that assembly the belt rubs the plate's underside recess by 0.25 mm (recess 2.0 mm deep, needs ≥ 2.6).
+
 ## Shell horns
 
 Copied from the legacy Solid Edge `ofw4_shell`: two lugs at x = ±33 mm (`horn_x`), 10 mm wide
