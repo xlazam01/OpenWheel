@@ -16771,7 +16771,7 @@
 			(justify left bottom mirror)
 		)
 	)
-	(gr_text "OpenWheel\nV3.1\n11/2026"
+	(gr_text "OpenWheel\nV3.2\n11/2026"
 		(at 92.8 57.9 0)
 		(layer "B.SilkS")
 		(uuid "39115ede-67b8-48b2-9d16-2aae1b9f375e")
