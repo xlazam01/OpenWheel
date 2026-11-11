@@ -147,7 +147,7 @@ and cap: same outline (flush with the shell's outer faces), same standoff, motor
     pad is thinned to 1.0 mm from the underside, so it lies on the print bed with the rest of the
     outer face and needs no supports. A Ø2 nub under the pad, right over the button, hangs 0.2 mm
     above it, so a press moves the pad about 0.45 mm in total. The pads carry **+** (CW, SW3) and
-    **−** (CCW / BOOT0, SW2), sunk 0.4 mm into the outer face. There is no LED window: the LEDs
+    **−** (CCW / BOOT0, SW2), sunk 0.6 mm into the outer face (as the logo, for a two-colour print). There is no LED window: the LEDs
     sit under the pad edge and only show through the slot. **Check on the print:** the pads must not
     rest on the buttons (stuck pressed); if a pad is too stiff, sand the neck thinner from inside.
   - **Logo:** the OpenWheel badge (`cad/logo/openwheel_badge.svg` ×1.1, ring Ø22) is sunk 0.6 mm (for a two-colour print) into the
@@ -160,8 +160,9 @@ and cap: same outline (flush with the shell's outer faces), same standoff, motor
 - **Printing** (checked with `tools/printcheck.py`, no supports needed):
   - Box on its plate-side face. The two ear-bay ceilings are 12–14 mm bridges 3.4 mm above the bed:
     use bridge settings (cooling on, slower). The notch-end wall is 0.66–0.79 mm (2 perimeters).
-  - Lid on its outer face. The **+** and **−** signs are 0.4 mm recesses bridged over (≤ 1.2 mm).
-    The pads under the signs are 0.6 mm thick. The logo recess roofs are bridges 0.6 mm above the bed,
+  - Lid on its outer face. The **+** and **−** signs are 0.6 mm recesses bridged over (≤ 2.1 mm).
+    The pads over the signs are only 0.4 mm thick (2 layers; printcheck flags them, accepted 2026-11-11 so the
+    pads keep their 1.0 mm flex). The logo recess roofs are bridges 0.6 mm above the bed,
     at most 4 mm wide.
 - **Assembly order** (from the prototype):
   1. Put the motor in, flange to the plate side, and fit the two M3x8 ear screws loosely through
