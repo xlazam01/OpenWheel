@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/banner.png" alt="OpenWheel" width="100%"></p>
+
 # OpenWheel
 
 Open-source motorised filter wheel for astrophotography (up to 9 filters; the DIY release takes
