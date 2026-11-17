@@ -218,6 +218,11 @@ protocol of OpenWheel was inspired by theirs and then extended with new features
 replies, error codes, a status command and device identification for automatic detection.
 OpenWheel is an independent project and is not affiliated with myFilterWheel.
 
+## Support
+
+OpenWheel is free and open source. If it saved you a weekend, tips go into the next build:
+[ko-fi.com/curlycz](https://ko-fi.com/curlycz)
+
 ## Licences
 
 - Software and firmware: GPL-3.0-or-later, see [LICENSE](LICENSE).
