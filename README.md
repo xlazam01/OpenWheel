@@ -2,6 +2,8 @@
 
 # OpenWheel
 
+<p align="center"><a href="https://ko-fi.com/curlycz"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi"></a></p>
+
 Open-source motorised filter wheel for astrophotography (up to 9 filters; the DIY release takes
 4 × 2"). It appears on the PC as a USB serial device, is detected automatically, and is driven from
 NINA and other ASCOM clients, or from KStars/Ekos through INDI.
