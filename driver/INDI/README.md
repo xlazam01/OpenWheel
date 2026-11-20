@@ -19,7 +19,10 @@ It is the Linux counterpart of the ASCOM driver in `driver/ASCOM/` and behaves t
   120 s, the driver sends `:30#` (halt).
 
 Status: builds against libindi 2.2.5. The core tests and the end-to-end indiserver test pass against the
-simulator. **Not yet tested with the real wheel.**
+simulator. Tested on the real wheel (firmware 1.4.0, Linux Mint 22.3, libindi 2.2.5, 2026-11-13) through
+`indiserver` and `indi_setprop`: auto detection, identify, names and focus offsets (written to and read back
+from the EEPROM), moves, rejected slot, home, halt, reconnect. Not yet tried from Ekos/KStars, and
+calibration was not run on the real wheel. `V5` and `V5_MIN` read −1 on that firmware.
 
 ## Building and installing
 

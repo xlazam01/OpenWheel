@@ -30,6 +30,12 @@ Copied from the legacy Solid Edge `ofw4_shell`: two lugs at x = ±33 mm (`horn_x
 two radial Ø4.4 × 6 mm holes for M3 heat-set inserts at z = 2.1 and 12.8 (`ins_*`), 0.4 mm lead-in.
 Printed flat, the insert-hole roofs are 3.1 mm bridges.
 
+The four inserts are in `ofw_triton_assembly` (`InsertM3` ×4, design `ofw_triton_insert_m3x5_7`):
+ruthex M3×5.7 (knurl Ø4.6, groove Ø4.0, bore modelled Ø2.5, brass), top flush with the horn top
+(y 84.5), bottom 0.3 mm above the hole floor. Ø4.6 in the Ø4.4 hole is the heat-set overlap (the
+retailer's recommended hole is Ø4.0; the printed Ø4.4 hole prints undersize). They carry the Triton
+OAG focuser bracket (`Triton/cad/triton_oaf_bracket`, M3×20 through its ear slots).
+
 Changes to the shell itself go to `../diy/ofw_diy_shell.sc`; the Triton shell follows on the next
 open (linked design). Keep `R_sh` = `D_out/2` of the DIY shell.
 
