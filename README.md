@@ -225,6 +225,13 @@ OpenWheel is an independent project and is not affiliated with myFilterWheel.
 OpenWheel is free and open source. If it saved you a weekend, tips go into the next build:
 [ko-fi.com/curlycz](https://ko-fi.com/curlycz)
 
+Want an assembled controller board or a complete wheel? Tell me at astro@martinlaza.eu. If enough
+people ask, I'll make a small batch.
+
+<!-- After the PCBWay shared-project upload, fill in the URL and uncomment:
+You can also order the bare PCB from [PCBWay](https://www.pcbway.com/project/shareproject/XXXX); I get 10 % of the order.
+-->
+
 ## Licences
 
 - Software and firmware: GPL-3.0-or-later, see [LICENSE](LICENSE).
