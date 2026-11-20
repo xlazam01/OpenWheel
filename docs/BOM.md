@@ -28,6 +28,7 @@ Print settings (layer height, walls, infill, material): **?** recorded after the
 |---|---|---|---|---|
 | M1 | Front plate | 1 | `cad/diy/ofw_diy_plate_front.step` | JLCPCB CNC, aluminium 6061, 3 mm, matt black anodised. Threads: 1 × M48 × 0.75 (aperture), 6 × M2.5. Ask for "deburr all edges" |
 | M2 | Camera plate | 1 | `cad/diy/ofw_diy_plate_camera.step` | Same. Threads: 6 × M2.5 |
+| M2′ | Camera plate, M42 variant (instead of M2) | (1) | `cad/diy/ofw_diy_plate_camera_m42.step` | Same. Thread: 1 × M42 × 0.75 (aperture, Ø41.25 bore). For ZWO cooled cameras with the T2 ring removed (ASI183MC/MM Pro), see [DIY notes](DIY_NOTES.md#m42-camera-plate-variant) |
 
 ## 3. Bought mechanical parts
 

@@ -226,6 +226,34 @@ aluminium; the STEP files are what you upload to JLCPCB.
 - Camera reference (Player One, IMX571 cameras): 5 mm front flange, back focus 17.5 mm from the
   flange face. The 21 mm wheel stack counts toward your sensor spacing.
 
+### M42 camera plate variant
+
+`cad/diy/ofw_diy_plate_camera_m42.sc` / `.step` ([#35](https://github.com/xlazam01/OpenWheel/issues/35)), an
+optional replacement for the camera plate, for cameras with a male **M42 × 0.75** front. In the assembly
+it is the hidden component `CameraPlateM42`, in the same place as `CameraPlate`: show one, hide the other.
+
+- Same plate as `ofw_diy_plate_camera` (outline, bore, standoff holes, motor-box and Hall slots), but the
+  aperture is an **M42 × 0.75** thread (Ø41.25 tap drill, threaded over the full 3 mm) and the 6 × M2.5
+  holes are left out. CNC aluminium only: 3 mm of M42 × 0.75 is about 3.5 turns, too little for a print.
+- Target camera: **ZWO ASI183MC Pro / MM Pro** (ASI183 manual V1.4, p. 21). Unscrew the 11 mm T2 ring.
+  Under it is a male M42 × 0.75 boss, 4 mm tall, on a flat Ø78 front face. The four front screws sit in
+  counterbores. The camera screws into the plate until its front face seats on the plate's outer face.
+- **Back focus:** sensor 6.5 mm behind the camera face + 21 mm wheel = **27.5 mm** from the sensor to the
+  front plate's outer face.
+- **Clearances, checked in the assembly** with a Ø78 × 73.5 body and a Ø42 × 4 boss:
+  - The boss reaches 1 mm past the plate's inner face. The wheel disc is 1.6 mm from that face, so
+    **0.6 mm** is left at any wheel position. Nothing on the wheel is closer to the camera plate than the disc.
+  - The camera face covers the camera-side bearing (0.1 mm below the plate face), the shaft (0.5 mm) and the
+    shell rim (0.15 mm). The standoff screw heads in the counterbores are 1.3 mm away, and the motor box is
+    42 mm away from the body. No overlaps.
+  - The body (Ø78 on the axis 38 mm from the shaft) overhangs the plate's top edge by 4.5 mm. That is fine:
+    the plate stands 0.15 mm proud of the shell.
+- **Rotation:** the thread decides where the motor box ends up relative to the camera. For a different angle,
+  put a thin M42 spacer ring (0.3–1 mm, sold for back-focus tuning) between camera and plate. That also adds
+  to the boss clearance and the back focus.
+- Other ZWO cameras with the same front may fit. Check each model's drawing for the boss height (≤ 4 mm) and
+  a flat front face first.
+
 ### Bearing stack
 
 The wheel runs on a Ø5 shaft in two MF105 bearings, one in each plate. Nothing may stick out of the

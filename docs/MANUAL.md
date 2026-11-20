@@ -18,6 +18,9 @@ The serial protocol for your own software: [PROTOCOL.md](PROTOCOL.md).
 - **Camera side:** the camera plate (the plate with the motor box). Player One cameras and other
   M2.5 flange cameras screw directly into its 6 threads. The plate is 3 mm: the screws must not
   reach into the chamber.
+- **M42 cameras** (ZWO ASI183MC/MM Pro and similar, T2 ring removed): build the wheel with the M42 camera
+  plate variant instead ([DIY notes](DIY_NOTES.md#m42-camera-plate-variant)). The camera screws straight
+  into the plate. Sensor to the front plate's outer face: 6.5 + 21 = **27.5 mm**.
 - **Telescope side:** M48 × 0.75 thread in the front plate, or an adapter on the 6 × M2.5 threads.
 - The wheel adds **21 mm** to the back focus: plan it into your sensor spacing.
 - Keep the motor box away from cables that pull on it; the USB-C opening is on its slanted side.
