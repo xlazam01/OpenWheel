@@ -78,7 +78,9 @@ bool CalibrationManager::load() {
     if (valid) {
         DEBUG_PRINTLN("  Calibration data is valid");
     } else {
+        // Blank (0xFF) or corrupt record: drop the raw bytes, or numSlots = 255 overruns every slot loop
         DEBUG_PRINTLN("  Calibration data is INVALID");
+        clear();
     }
 
     return valid;
