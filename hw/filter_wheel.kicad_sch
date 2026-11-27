@@ -9528,7 +9528,7 @@
 				)
 			)
 		)
-		(property "Value" "SMD0603P050TF"
+		(property "Value" "1206L050YR"
 			(at 78.74 27.94 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9538,7 +9538,7 @@
 				)
 			)
 		)
-		(property "Footprint" "OpenWheel:Fuse_0603_1608Metric"
+		(property "Footprint" "OpenWheel:Fuse_1206_3216Metric"
 			(at 78.74 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -9571,7 +9571,7 @@
 				)
 			)
 		)
-		(property "LCSC" "C20789"
+		(property "LCSC" "C163512"
 			(at 78.74 25.4 0)
 			(hide yes)
 			(show_name no)
