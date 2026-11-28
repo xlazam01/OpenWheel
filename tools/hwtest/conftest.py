@@ -170,10 +170,18 @@ class Wheel:
         return r[:-1]
 
     def get_int(self, n):
-        return int(self.get(n))
+        r = self.get(n)
+        try:
+            return int(r)
+        except ValueError:
+            raise AssertionError(f"cmd {n}: not an integer: {r!r} (unhealthy board? run tools/hwtest/readout.py)")
 
     def get_list(self, n):
-        return [int(x) for x in self.get(n).split(",") if x != ""]
+        r = self.get(n)
+        try:
+            return [int(x) for x in r.split(",") if x != ""]
+        except ValueError:
+            raise AssertionError(f"cmd {n}: not an integer list: {r!r} (unhealthy board? run tools/hwtest/readout.py)")
 
     def set(self, n, params):
         # a setter blocks the firmware ~0.4 s (EEPROM write) and then answers OK#
